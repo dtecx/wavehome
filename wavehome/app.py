@@ -29,6 +29,7 @@ from .drawing import (
     draw_wavehome_overlay,
 )
 from .model import ensure_model_exists
+from .motion import MotionDetector
 from .recognition import extract_gesture_frame
 from .workflow.engine import WorkflowEngine
 from .workflow.loader import enabled_rules, load_rules
@@ -64,6 +65,8 @@ def display_loop(camera_stream):
         action_adapter = VirtualLampActions(lamp_controller)
         workflow_engine = WorkflowEngine(enabled_rules(rules_config), action_adapter)
         stable_filter = StableGestureFilter(GESTURE_HOLD_SECONDS)
+
+    motion_detector = MotionDetector()
 
     last_seen_id = -1
     frames = 0
@@ -160,9 +163,22 @@ def display_loop(camera_stream):
 
             now = time.time()
 
+            motion_key = motion_detector.update(gesture_frame.primary_palm_center, now)
+            event_key = motion_key or gesture_frame.command_key
+            event_label = gesture_frame.command_label
+            event_value = gesture_frame.command_value
+
+            if motion_key is not None:
+                event_label = motion_key
+                event_value = None
+
             if USE_WORKFLOW_ENGINE and workflow_engine is not None and stable_filter is not None:
-                stable_key = stable_filter.update(gesture_frame.command_key, now)
-                workflow_engine.update(stable_key, now, gesture_frame.command_value)
+                if motion_key is not None:
+                    stable_key = motion_key
+                else:
+                    stable_key = stable_filter.update(event_key, now)
+
+                workflow_engine.update(stable_key, now, event_value)
 
                 if workflow_engine.message:
                     lamp_controller.message = workflow_engine.message
@@ -171,9 +187,9 @@ def display_loop(camera_stream):
                 lamp_controller._update_party_frame(now)
             else:
                 lamp_controller.update(
-                    gesture_frame.command_key,
+                    event_key,
                     now,
-                    gesture_frame.command_value,
+                    event_value,
                 )
 
             frames += 1
@@ -188,7 +204,7 @@ def display_loop(camera_stream):
                 fps,
                 dropped,
                 lamp_controller,
-                gesture_frame.command_label,
+                event_label,
                 now,
                 camera_stream.source_label,
                 camera_stream.status_text,
