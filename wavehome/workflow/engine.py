@@ -4,11 +4,34 @@ class WorkflowEngine:
         self.action_adapter = action_adapter
         self.sequence_state = {}
         self.cooldowns = {}
+        self.pending_confirmation = None
         self.message = "Workflow engine ready"
 
     def update(self, stable_gesture: str | None, now: float, value: float | None = None) -> str | None:
         if stable_gesture is None:
             return None
+
+        if self.pending_confirmation is not None:
+            pending = self.pending_confirmation
+
+            if now > pending["expires_at"]:
+                self.pending_confirmation = None
+                self.message = "Confirmation timed out"
+                return "confirmation_timeout"
+
+            if stable_gesture == pending["gesture"]:
+                rule = pending["rule"]
+                self.pending_confirmation = None
+                result = self.action_adapter.execute(rule.get("action", {}))
+                self._set_cooldown(rule, now)
+                self.message = f"Confirmed: {rule.get('name', rule['id'])}"
+                return result
+
+            if stable_gesture == "THUMB_DOWN":
+                self.pending_confirmation = None
+                self.message = "Confirmation cancelled"
+                return "confirmation_cancelled"
+
 
         for rule in self.rules:
             trigger = rule.get("trigger", {})
@@ -38,6 +61,16 @@ class WorkflowEngine:
     def _execute_rule(self, rule: dict, now: float) -> str | None:
         if self._on_cooldown(rule, now):
             return None
+
+        confirmation = rule.get("safety", {}).get("confirmation", {})
+        if confirmation.get("required"):
+            self.pending_confirmation = {
+                "rule": rule,
+                "gesture": confirmation.get("gesture", "THUMB_UP"),
+                "expires_at": now + confirmation.get("timeout_ms", 3000) / 1000.0,
+            }
+            self.message = f"Confirm: {rule.get('name', rule['id'])}"
+            return "pending_confirmation"
 
         result = self.action_adapter.execute(rule.get("action", {}))
         self._set_cooldown(rule, now)
