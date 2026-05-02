@@ -20,6 +20,10 @@ ACTION_KINDS = {
     "virtual_lamp.brightness_step",
     "virtual_lamp.brightness_set",
     "virtual_lamp.color_set",
+    "smart_home.set_power",
+    "smart_home.set_brightness",
+    "smart_home.set_color",
+    "smart_home.activate_scene",
     "workflow.enter_command_mode",
     "workflow.exit_command_mode",
     "workflow.cancel",
@@ -53,6 +57,25 @@ def _optional_positive_int(value: Any, name: str) -> None:
         return
     if not isinstance(value, int) or value < 0:
         raise RuleValidationError(f"{name} must be a positive integer")
+
+
+def _optional_percent(value: Any, name: str) -> None:
+    if value is None:
+        return
+    if not isinstance(value, int) or value < 0 or value > 100:
+        raise RuleValidationError(f"{name} must be an integer from 0 to 100")
+
+
+def _optional_rgb(value: Any, name: str) -> None:
+    if value is None:
+        return
+    if not isinstance(value, list) or len(value) != 3:
+        raise RuleValidationError(f"{name} must be a three-channel RGB list")
+    for channel_index, channel in enumerate(value):
+        if not isinstance(channel, int) or channel < 0 or channel > 255:
+            raise RuleValidationError(
+                f"{name}[{channel_index}] must be an integer from 0 to 255"
+            )
 
 
 def validate_rules_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -138,6 +161,22 @@ def validate_rule(rule: Any, index: int | None = None) -> None:
 
     if action_kind == "workflow.enter_command_mode":
         _optional_positive_int(action.get("duration_ms", 10000), f"{prefix}.action.duration_ms")
+
+    elif action_kind == "smart_home.set_power":
+        _require_string(action.get("device_id"), f"{prefix}.action.device_id")
+        if not isinstance(action.get("on", True), bool):
+            raise RuleValidationError(f"{prefix}.action.on must be true or false")
+
+    elif action_kind == "smart_home.set_brightness":
+        _require_string(action.get("device_id"), f"{prefix}.action.device_id")
+        _optional_percent(action.get("percent"), f"{prefix}.action.percent")
+
+    elif action_kind == "smart_home.set_color":
+        _require_string(action.get("device_id"), f"{prefix}.action.device_id")
+        _optional_rgb(action.get("rgb"), f"{prefix}.action.rgb")
+
+    elif action_kind == "smart_home.activate_scene":
+        _require_string(action.get("scene_id"), f"{prefix}.action.scene_id")
 
     safety = _require_dict(rule.get("safety", {}), f"{prefix}.safety")
     _optional_positive_int(safety.get("cooldown_ms", 0), f"{prefix}.safety.cooldown_ms")

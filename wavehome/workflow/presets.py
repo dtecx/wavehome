@@ -138,6 +138,36 @@ RULE_PRESETS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "id": "preset_google_home_light_on",
+        "name": "Future Google Home light on",
+        "description": "Template for turning on a Google Home compatible light through the future adapter.",
+        "rule": {
+            "id": "google_home_light_on",
+            "name": "Turn on smart light",
+            "enabled": False,
+            "trigger": {
+                "kind": "sequence",
+                "steps": [
+                    {"gesture": "OPEN_PALM", "hold_ms": 250},
+                    {"gesture": "THUMB_UP", "hold_ms": 250},
+                ],
+                "max_total_ms": 5000,
+                "max_gap_ms": 2000,
+            },
+            "action": {
+                "kind": "smart_home.set_power",
+                "device_id": "replace-with-google-home-device-id",
+                "on": True,
+            },
+            "safety": {
+                "cooldown_ms": 2000,
+                "command_mode": {
+                    "required": True,
+                },
+            },
+        },
+    },
 ]
 
 

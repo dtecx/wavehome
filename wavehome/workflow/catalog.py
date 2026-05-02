@@ -90,6 +90,26 @@ ACTION_BLOCKS: dict[str, dict[str, Any]] = {
         "description": "Set RGB color or derive greyscale from continuous value.",
         "fields": ["rgb", "value"],
     },
+    "smart_home.set_power": {
+        "label": "Smart device power",
+        "description": "Turn a future Google Home compatible device on or off.",
+        "fields": ["device_id", "on"],
+    },
+    "smart_home.set_brightness": {
+        "label": "Smart light brightness",
+        "description": "Set a future Google Home compatible light brightness.",
+        "fields": ["device_id", "percent", "value"],
+    },
+    "smart_home.set_color": {
+        "label": "Smart light color",
+        "description": "Set a future Google Home compatible light color.",
+        "fields": ["device_id", "rgb", "value"],
+    },
+    "smart_home.activate_scene": {
+        "label": "Smart scene",
+        "description": "Run a future Google Home scene or automation.",
+        "fields": ["scene_id"],
+    },
 }
 
 

@@ -5,6 +5,8 @@ import mediapipe as mp
 import numpy as np
 from mediapipe.tasks.python import vision
 
+from .actions.router import CompositeActionAdapter
+from .actions.smart_home import SmartHomeActions
 from .actions.virtual_lamp import VirtualLampActions
 from .camera import Esp32CameraStream, LocalCameraStream
 from .config import (
@@ -30,6 +32,7 @@ from .drawing import (
 )
 from .model import ensure_model_exists
 from .motion import MotionDetector
+from .providers.google_home import GoogleHomeAdapter
 from .recognition import extract_gesture_frame
 from .workflow.engine import WorkflowEngine
 from .workflow.loader import enabled_rules, load_rules
@@ -62,7 +65,12 @@ def display_loop(camera_stream):
 
     if USE_WORKFLOW_ENGINE:
         rules_config = load_rules()
-        action_adapter = VirtualLampActions(lamp_controller)
+        action_adapter = CompositeActionAdapter(
+            [
+                VirtualLampActions(lamp_controller),
+                SmartHomeActions(GoogleHomeAdapter.from_env()),
+            ]
+        )
         workflow_engine = WorkflowEngine(enabled_rules(rules_config), action_adapter)
         stable_filter = StableGestureFilter(GESTURE_HOLD_SECONDS)
 

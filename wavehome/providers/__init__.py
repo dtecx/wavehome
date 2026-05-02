@@ -1,0 +1,2 @@
+"""Smart-home provider adapters."""
+
