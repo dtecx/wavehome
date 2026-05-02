@@ -2,269 +2,63 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>waveHome Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    :root {
-      color-scheme: dark;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #0f1115;
-      color: #f5f5f5;
-    }
-
-    body {
-      margin: 0;
-      padding: 24px;
-    }
-
-    .shell {
-      max-width: 1180px;
-      margin: 0 auto;
-      display: grid;
-      gap: 18px;
-    }
-
-    .card {
-      background: #171a21;
-      border: 1px solid #2b313d;
-      border-radius: 18px;
-      padding: 18px;
-      box-shadow: 0 18px 40px rgb(0 0 0 / 0.25);
-    }
-
-    h1, h2 {
-      margin: 0 0 12px;
-    }
-
-    .muted {
-      color: #9ca3af;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 18px;
-    }
-
-    @media (max-width: 900px) {
-      .grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    textarea {
-      width: 100%;
-      min-height: 520px;
-      box-sizing: border-box;
-      resize: vertical;
-      border-radius: 14px;
-      border: 1px solid #374151;
-      background: #0b0d12;
-      color: #e5e7eb;
-      padding: 14px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 13px;
-      line-height: 1.45;
-    }
-
-    button {
-      border: 0;
-      border-radius: 999px;
-      background: #38bdf8;
-      color: #07111f;
-      font-weight: 700;
-      padding: 10px 16px;
-      cursor: pointer;
-    }
-
-    button.secondary {
-      background: #374151;
-      color: #f9fafb;
-    }
-
-    button.danger {
-      background: #fb7185;
-      color: #26040a;
-    }
-
-    .row {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .pill {
-      display: inline-flex;
-      border-radius: 999px;
-      background: #253044;
-      color: #dbeafe;
-      padding: 5px 10px;
-      margin: 4px 4px 0 0;
-      font-size: 13px;
-    }
-
-    .rule {
-      border-top: 1px solid #2b313d;
-      padding: 10px 0;
-    }
-
-    .rule:first-child {
-      border-top: 0;
-    }
-
-    .ok {
-      color: #86efac;
-    }
-
-    .err {
-      color: #fda4af;
-      white-space: pre-wrap;
-    }
-  </style>
+  <title>waveHome Workflow Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <main class="shell">
-    <section class="card">
-      <h1>waveHome Dashboard</h1>
-      <p class="muted">Edit workflow rules, gestures, timings, confirmations, and actions.</p>
-      <div class="row">
-        <button onclick="loadAll()">Reload</button>
-        <button onclick="saveRules()">Save rules</button>
-        <button class="secondary" onclick="formatRules()">Format JSON</button>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">waveHome</p>
+      <h1>Workflow block editor</h1>
+      <p class="subtitle">Build gesture combinations, timings, confirmations, and lamp actions without hardcoding Python rules.</p>
+    </div>
+
+    <nav class="toolbar">
+      <button id="reload" type="button">Reload</button>
+      <button id="validate" type="button">Validate</button>
+      <button id="save" type="button" class="primary">Save rules</button>
+      <button id="reset" type="button" class="danger">Reset defaults</button>
+    </nav>
+  </header>
+
+  <section id="message" class="message info">Loading...</section>
+
+  <main class="layout">
+    <section class="main-panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Rules</h2>
+          <p id="rule-count" class="muted">0 rules</p>
+        </div>
+        <button type="button" data-op="add-rule">Add blank rule</button>
       </div>
-      <p id="status" class="muted">Loading...</p>
+
+      <div id="rules" class="rules-list"></div>
     </section>
 
-    <section class="grid">
-      <div class="card">
-        <h2>Rules JSON</h2>
-        <textarea id="rulesBox" spellcheck="false"></textarea>
-      </div>
+    <aside class="side-panel">
+      <section class="panel">
+        <h2>Presets</h2>
+        <p class="muted">Fast-start blocks for safe gesture control.</p>
+        <div id="presets" class="preset-list"></div>
+      </section>
 
-      <div class="card">
+      <section class="panel">
         <h2>Capabilities</h2>
-        <h3>Trigger blocks</h3>
-        <div id="triggers"></div>
+        <div id="capabilities"></div>
+      </section>
 
-        <h3>Action blocks</h3>
-        <div id="actions"></div>
-
-        <h3>Gesture blocks</h3>
-        <div id="gestures"></div>
-
-        <h2 style="margin-top: 22px;">Current rules</h2>
-        <div id="ruleList"></div>
-      </div>
-    </section>
+      <section class="panel raw-panel">
+        <div class="panel-heading compact">
+          <h2>Raw JSON</h2>
+          <button id="format" type="button">Format JSON</button>
+        </div>
+        <textarea id="raw-json" spellcheck="false"></textarea>
+      </section>
+    </aside>
   </main>
 
-  <script>
-    const statusEl = document.getElementById("status");
-    const rulesBox = document.getElementById("rulesBox");
-
-    function setStatus(text, ok = true) {
-      statusEl.textContent = text;
-      statusEl.className = ok ? "ok" : "err";
-    }
-
-    function pill(text) {
-      return `<span class="pill">${text}</span>`;
-    }
-
-    async function loadAll() {
-      try {
-        const [rulesRes, capsRes] = await Promise.all([
-          fetch("/api/rules"),
-          fetch("/api/capabilities")
-        ]);
-
-        if (!rulesRes.ok) throw new Error(await rulesRes.text());
-        if (!capsRes.ok) throw new Error(await capsRes.text());
-
-        const rules = await rulesRes.json();
-        const caps = await capsRes.json();
-
-        rulesBox.value = JSON.stringify(rules, null, 2);
-
-        document.getElementById("triggers").innerHTML =
-          caps.trigger_kinds.map(pill).join("");
-
-        document.getElementById("actions").innerHTML =
-          caps.action_kinds.map(pill).join("");
-
-        document.getElementById("gestures").innerHTML =
-          Object.entries(caps.gestures)
-            .map(([key, item]) => pill(`${key} — ${item.label}`))
-            .join("");
-
-        renderRuleList(rules);
-        setStatus("Loaded");
-      } catch (error) {
-        setStatus(String(error), false);
-      }
-    }
-
-    function renderRuleList(rules) {
-      const html = rules.rules.map(rule => {
-        const trigger = rule.trigger || {};
-        const action = rule.action || {};
-        const safety = rule.safety || {};
-        const commandMode = safety.command_mode?.required ? "command mode required" : "always active";
-        const confirm = safety.confirmation?.required
-          ? `confirm with ${safety.confirmation.gesture}`
-          : "no confirmation";
-
-        return `
-          <div class="rule">
-            <strong>${rule.enabled ? "✅" : "⛔"} ${rule.name}</strong>
-            <div class="muted">${rule.id}</div>
-            <div>${pill(trigger.kind || "unknown")} ${pill(action.kind || "unknown")}</div>
-            <div class="muted">${commandMode}; ${confirm}</div>
-          </div>
-        `;
-      }).join("");
-
-      document.getElementById("ruleList").innerHTML = html;
-    }
-
-    function formatRules() {
-      try {
-        const parsed = JSON.parse(rulesBox.value);
-        rulesBox.value = JSON.stringify(parsed, null, 2);
-        renderRuleList(parsed);
-        setStatus("Formatted");
-      } catch (error) {
-        setStatus(String(error), false);
-      }
-    }
-
-    async function saveRules() {
-      try {
-        const parsed = JSON.parse(rulesBox.value);
-
-        const res = await fetch("/api/rules", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(parsed)
-        });
-
-        if (!res.ok) {
-          throw new Error(await res.text());
-        }
-
-        const saved = await res.json();
-        rulesBox.value = JSON.stringify(saved, null, 2);
-        renderRuleList(saved);
-        setStatus("Saved rules");
-      } catch (error) {
-        setStatus(String(error), false);
-      }
-    }
-
-    loadAll();
-  </script>
+  <script src="/static/app.js"></script>
 </body>
 </html>
