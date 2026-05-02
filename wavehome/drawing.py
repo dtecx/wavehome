@@ -209,6 +209,8 @@ def draw_wavehome_overlay(
     controller,
     primary_command_label,
     now,
+    camera_source,
+    camera_status,
 ):
     frame_height, frame_width = frame.shape[:2]
     bottom_y = frame_height - BOTTOM_BAR_HEIGHT
@@ -255,12 +257,24 @@ def draw_wavehome_overlay(
         1,
     )
 
+    draw_plain_text(
+        frame,
+        f"{camera_source}: {camera_status}",
+        (360, 58),
+        0.40,
+        (190, 220, 230),
+        1,
+    )
+
     panel_x = frame_width - 252
     panel_y = 14
     panel_w = 236
     panel_h = 70
-    lamp_color = (0, 220, 255) if controller.lamp_on else (95, 95, 95)
+    lamp_rgb = controller.current_lamp_rgb()
+    lamp_color = (lamp_rgb[2], lamp_rgb[1], lamp_rgb[0])
     lamp_text = "ON" if controller.lamp_on else "OFF"
+    if controller.party_mode:
+        lamp_text = "PARTY"
 
     draw_translucent_rect(
         frame,
@@ -310,18 +324,27 @@ def draw_wavehome_overlay(
 
     draw_plain_text(
         frame,
+        f"RGB: {lamp_rgb}",
+        (panel_x + 58, panel_y + 82),
+        0.34,
+        (210, 210, 210),
+        1,
+    )
+
+    draw_plain_text(
+        frame,
         "Toggle lamp",
         (16, bottom_y + 28),
         0.56,
         (255, 255, 255),
         2,
     )
-    draw_plain_text(frame, "5 fingers > fist > 5 fingers > fist", (16, bottom_y + 55), 0.47, (218, 218, 218), 1)
+    draw_plain_text(frame, "5 > fist > 5 > fist", (16, bottom_y + 55), 0.47, (218, 218, 218), 1)
     draw_sequence_steps(frame, controller, (285, bottom_y + 32))
 
     draw_plain_text(
         frame,
-        "Brightness",
+        "Color",
         (460, bottom_y + 28),
         0.56,
         (255, 255, 255),
@@ -329,9 +352,18 @@ def draw_wavehome_overlay(
     )
     draw_plain_text(
         frame,
-        "fist > thumb up/down, hold 3s",
+        "fist > peace, rotate",
         (460, bottom_y + 55),
         0.47,
+        (218, 218, 218),
+        1,
+    )
+
+    draw_plain_text(
+        frame,
+        "Party: fist > horns > fist",
+        (460, bottom_y + 78),
+        0.38,
         (218, 218, 218),
         1,
     )

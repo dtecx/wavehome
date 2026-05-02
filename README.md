@@ -15,6 +15,8 @@ The project is aimed at making smart home control more accessible for deaf, hard
   - Toggle lamp: `5 fingers up -> fist -> 5 fingers up -> fist`
   - Increase brightness: `fist -> thumb up`, then hold
   - Decrease brightness: `fist -> thumb down`, then hold
+  - Set color: `fist -> peace`, then rotate the peace sign
+  - Party mode: `fist -> horns -> fist`
 - Modular code layout under `wavehome/`.
 
 ## Project Layout
@@ -69,10 +71,10 @@ For laptop webcam testing, set:
 
 ```python
 USE_LOCAL_CAMERA = True
-LOCAL_CAMERA_INDEX = 0
+LOCAL_CAMERA_INDEX = None
 ```
 
-When `USE_LOCAL_CAMERA` is `True`, the app ignores `CAMERA_URL` and reads frames from the local OpenCV webcam instead.
+When `USE_LOCAL_CAMERA` is `True`, the app ignores `CAMERA_URL` and reads frames from the local OpenCV webcam instead. `LOCAL_CAMERA_INDEX = None` auto-scans camera indexes and skips cameras that only return black frames. Set it to an integer like `0` or `1` to force a specific camera.
 
 ## Running
 
@@ -103,6 +105,26 @@ First make a fist to arm brightness control. Then:
 - Continue holding to repeat every 3 seconds.
 
 Brightness is clamped between 0% and 100%.
+
+### Color
+
+First make a fist to arm color control. Then hold a peace sign and rotate it.
+
+- `-60` degrees maps to RGB `(0, 0, 0)`.
+- `0` degrees maps to RGB `(128, 128, 128)`.
+- `60` degrees maps to RGB `(255, 255, 255)`.
+
+The angle is measured from a straight vertical peace sign.
+
+### Party Mode
+
+Use:
+
+```text
+fist -> horns -> fist
+```
+
+The same sequence toggles party mode on or off. Party mode turns the lamp on, cycles colors, and blinks the lamp.
 
 ## Roadmap
 

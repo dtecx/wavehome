@@ -25,7 +25,13 @@ from .drawing import (
     draw_text_with_background,
     draw_wavehome_overlay,
 )
-from .gestures import classify_gesture, command_key_from_hand, command_label, count_fingers
+from .gestures import (
+    classify_gesture,
+    command_key_from_hand,
+    command_label,
+    count_fingers,
+    peace_rotation_degrees,
+)
 from .model import ensure_model_exists
 
 
@@ -58,12 +64,40 @@ def display_loop(camera_stream):
     last_fps_time = time.time()
 
     last_timestamp_ms = 0
+    last_wait_frame_time = 0.0
 
     try:
         while True:
             jpg, current_id = camera_stream.get_latest()
 
-            if jpg is None or current_id == last_seen_id:
+            if jpg is None:
+                now = time.time()
+
+                if now - last_wait_frame_time >= 0.25:
+                    wait_frame = np.zeros((DISPLAY_HEIGHT, DISPLAY_WIDTH, 3), dtype=np.uint8)
+                    draw_wavehome_overlay(
+                        wait_frame,
+                        "Waiting for camera frame",
+                        fps,
+                        dropped,
+                        lamp_controller,
+                        "none",
+                        now,
+                        camera_stream.source_label,
+                        camera_stream.status_text,
+                    )
+                    cv2.imshow(f"{APP_NAME} {camera_stream.source_label} Gesture Control", wait_frame)
+                    last_wait_frame_time = now
+
+                    key = cv2.waitKey(1) & 0xFF
+
+                    if key == ord("q"):
+                        break
+
+                time.sleep(0.005)
+                continue
+
+            if current_id == last_seen_id:
                 time.sleep(0.005)
                 continue
 
@@ -105,6 +139,7 @@ def display_loop(camera_stream):
             detected_hands_text = []
             controlling_command_key = None
             controlling_command_label = "none"
+            controlling_command_value = None
 
             if result.hand_landmarks:
                 for hand_index, landmarks in enumerate(result.hand_landmarks):
@@ -115,6 +150,8 @@ def display_loop(camera_stream):
                     if controlling_command_key is None and command_key is not None:
                         controlling_command_key = command_key
                         controlling_command_label = command_label(command_key)
+                        if command_key == "PEACE":
+                            controlling_command_value = peace_rotation_degrees(landmarks)
                     elif controlling_command_label == "none":
                         controlling_command_label = gesture
 
@@ -148,7 +185,7 @@ def display_loop(camera_stream):
                     draw_finger_states_for_hand(frame, fingers, hand_index)
 
             now = time.time()
-            lamp_controller.update(controlling_command_key, now)
+            lamp_controller.update(controlling_command_key, now, controlling_command_value)
 
             frames += 1
 
@@ -170,9 +207,11 @@ def display_loop(camera_stream):
                 lamp_controller,
                 controlling_command_label,
                 now,
+                camera_stream.source_label,
+                camera_stream.status_text,
             )
 
-            cv2.imshow(f"{APP_NAME} ESP32-CAM Gesture Control", frame)
+            cv2.imshow(f"{APP_NAME} {camera_stream.source_label} Gesture Control", frame)
 
             key = cv2.waitKey(1) & 0xFF
 

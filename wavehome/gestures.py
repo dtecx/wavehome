@@ -1,3 +1,5 @@
+import math
+
 from .config import COMMAND_LABELS
 from .geometry import angle_2d, distance_2d
 
@@ -82,6 +84,39 @@ def count_fingers(landmarks):
     return finger_count, fingers
 
 
+def is_peace_gesture(fingers):
+    return (
+        fingers["index"]
+        and fingers["middle"]
+        and not fingers["ring"]
+        and not fingers["pinky"]
+    )
+
+
+def is_horns_gesture(fingers):
+    return (
+        fingers["index"]
+        and not fingers["middle"]
+        and not fingers["ring"]
+        and fingers["pinky"]
+    )
+
+
+def peace_rotation_degrees(landmarks):
+    base_x = (landmarks[5].x + landmarks[9].x) / 2.0
+    base_y = (landmarks[5].y + landmarks[9].y) / 2.0
+    tip_x = (landmarks[8].x + landmarks[12].x) / 2.0
+    tip_y = (landmarks[8].y + landmarks[12].y) / 2.0
+
+    dx = tip_x - base_x
+    dy = tip_y - base_y
+
+    if dx == 0 and dy == 0:
+        return 0.0
+
+    return math.degrees(math.atan2(dx, -dy))
+
+
 def thumb_direction(landmarks, fingers):
     if fingers["index"] or fingers["middle"] or fingers["ring"] or fingers["pinky"]:
         return None
@@ -142,10 +177,13 @@ def classify_gesture(finger_count, fingers, landmarks):
     if finger_count == 5:
         return "Open palm"
 
+    if is_horns_gesture(fingers):
+        return "Horns"
+
     if fingers["index"] and not fingers["middle"] and not fingers["ring"] and not fingers["pinky"]:
         return "Pointing / 1 finger"
 
-    if fingers["index"] and fingers["middle"] and not fingers["ring"] and not fingers["pinky"]:
+    if is_peace_gesture(fingers):
         return "Peace / 2 fingers"
 
     if fingers["thumb"] and fingers["index"] and fingers["middle"] and not fingers["ring"] and not fingers["pinky"]:
@@ -171,6 +209,12 @@ def command_key_from_hand(finger_count, fingers, landmarks):
 
     if finger_count == 0:
         return "FIST"
+
+    if is_peace_gesture(fingers):
+        return "PEACE"
+
+    if is_horns_gesture(fingers):
+        return "HORNS"
 
     return None
 

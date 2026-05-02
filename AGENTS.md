@@ -14,6 +14,8 @@ The target direction is to use the same gesture command layer to control real sm
 - Controls a virtual lamp:
   - Toggle ON/OFF: `5 fingers up -> fist -> 5 fingers up -> fist` within 15 seconds.
   - Brightness: `fist -> thumb up/down`, then hold thumb up or down. Every 3 seconds changes brightness by 10%.
+  - Color: `fist -> peace`, then rotate the peace sign across a -60 to 60 degree range.
+  - Party mode: `fist -> horns -> fist` toggles blinking color cycling.
 - Keeps app logic split into small modules under `wavehome/`.
 
 ## Code Map
@@ -35,7 +37,7 @@ The target direction is to use the same gesture command layer to control real sm
    - `mediapipe`
    - `numpy`
    - `requests`
-2. Make sure `CAMERA_URL` in `wavehome/config.py` points to the ESP32-CAM stream, or set `USE_LOCAL_CAMERA = True` to use a laptop webcam.
+2. Make sure `CAMERA_URL` in `wavehome/config.py` points to the ESP32-CAM stream, or set `USE_LOCAL_CAMERA = True` to use a laptop webcam. Use `LOCAL_CAMERA_INDEX = None` for auto-detect or an integer index to force one camera.
 3. Run:
 
 ```bash
@@ -60,6 +62,5 @@ Press `q` in the OpenCV window to quit.
 - Add calibration helpers for camera angle, left/right handedness, and gesture sensitivity.
 - Add more accessible gestures:
   - Swipe left/right to choose a device.
-  - Peace sign hold to switch scenes.
   - Open palm hold to cancel/back.
   - Pinch and vertical movement for smooth brightness control.
