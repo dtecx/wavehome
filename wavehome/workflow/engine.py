@@ -43,6 +43,15 @@ class WorkflowEngine:
                 action_result = self._update_hold_rule(rule, stable_gesture, now)
             elif kind == "armed_hold":
                 action_result = self._update_armed_hold_rule(rule, stable_gesture, now)
+            elif kind == "motion":
+                action_result = self._update_motion_rule(rule, stable_gesture, now)
+            elif kind == "value_control":
+                action_result = self._update_value_control_rule(
+                    rule,
+                    stable_gesture,
+                    now,
+                    value,
+                )
             else:
                 action_result = None
 
@@ -356,6 +365,51 @@ class WorkflowEngine:
         state["next_action_at"] = now + repeat_seconds
 
         return result
+
+
+    def _update_motion_rule(
+        self,
+        rule: dict[str, Any],
+        stable_gesture: str,
+        now: float,
+    ) -> str | None:
+        trigger = rule["trigger"]
+
+        if stable_gesture != trigger.get("gesture"):
+            return None
+
+        return self._execute_rule(rule, now)
+
+    def _update_value_control_rule(
+        self,
+        rule: dict[str, Any],
+        stable_gesture: str,
+        now: float,
+        value: float | None,
+    ) -> str | None:
+        trigger = rule["trigger"]
+
+        if stable_gesture != trigger.get("gesture"):
+            return None
+
+        if value is None:
+            return None
+
+        state = self.hold_state.setdefault(
+            f"value:{rule['id']}",
+            {"next_action_at": 0.0},
+        )
+
+        if now < state["next_action_at"]:
+            return None
+
+        repeat_seconds = trigger.get("repeat_ms", 250) / 1000.0
+        state["next_action_at"] = now + repeat_seconds
+
+        action = dict(rule.get("action", {}))
+        action["value"] = value
+
+        return self._execute_rule(rule, now, action_override=action)
 
     def _reset_sequence_state(self, state: dict[str, Any]) -> None:
         state["index"] = 0
