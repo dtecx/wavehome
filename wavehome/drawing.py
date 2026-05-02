@@ -5,6 +5,11 @@ from .geometry import landmark_to_pixel
 from .gestures import HAND_CONNECTIONS
 
 
+TOP_BAR_HEIGHT = 98
+BOTTOM_BAR_HEIGHT = 88
+PANEL_MARGIN = 12
+
+
 def draw_plain_text(frame, text, position, font_scale=0.55, color=(255, 255, 255), thickness=1):
     cv2.putText(
         frame,
@@ -45,6 +50,12 @@ def draw_text_with_background(frame, text, position, font_scale=0.7):
         thickness,
         cv2.LINE_AA,
     )
+
+
+def draw_translucent_rect(frame, top_left, bottom_right, color, alpha=0.72):
+    overlay = frame.copy()
+    cv2.rectangle(overlay, top_left, bottom_right, color, -1)
+    cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
 
 
 def draw_hand_landmarks(frame, landmarks, hand_index):
@@ -99,40 +110,47 @@ def draw_bounding_box(frame, landmarks):
 
 def draw_finger_states_for_hand(frame, fingers, hand_index):
     _, width = frame.shape[:2]
+    panel_w = 214
+    panel_h = 70
+    y = TOP_BAR_HEIGHT + PANEL_MARGIN
 
     if hand_index == 0:
-        x = 10
-        y = 165
+        x = PANEL_MARGIN
     else:
-        x = width - 185
-        y = 165
+        x = width - panel_w - PANEL_MARGIN
 
-    draw_text_with_background(
-        frame,
-        f"Hand {hand_index + 1}",
-        (x, y),
-        0.55,
-    )
+    draw_translucent_rect(frame, (x, y), (x + panel_w, y + panel_h), (18, 18, 18), 0.74)
+    cv2.rectangle(frame, (x, y), (x + panel_w, y + panel_h), (95, 95, 95), 1)
 
-    y += 30
+    draw_plain_text(frame, f"Hand {hand_index + 1}", (x + 12, y + 23), 0.52, (255, 255, 255), 2)
 
-    for name in ["thumb", "index", "middle", "ring", "pinky"]:
-        state = "UP" if fingers[name] else "DOWN"
+    labels = [("T", "thumb"), ("I", "index"), ("M", "middle"), ("R", "ring"), ("P", "pinky")]
 
-        draw_text_with_background(
+    for idx, (label, name) in enumerate(labels):
+        cx = x + 22 + idx * 38
+        cy = y + 49
+        is_up = fingers[name]
+        fill_color = (45, 185, 96) if is_up else (72, 72, 72)
+        text_color = (255, 255, 255) if is_up else (190, 190, 190)
+
+        cv2.circle(frame, (cx, cy), 13, fill_color, -1)
+        cv2.circle(frame, (cx, cy), 14, (220, 220, 220), 1)
+
+        text_size, _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.42, 1)
+        draw_plain_text(
             frame,
-            f"{name}: {state}",
-            (x, y),
-            0.45,
+            label,
+            (cx - text_size[0] // 2, cy + text_size[1] // 2),
+            0.42,
+            text_color,
+            1,
         )
-
-        y += 25
 
 
 def draw_sequence_steps(frame, controller, origin):
     x, y = origin
     labels = ["5", "F", "5", "F"]
-    box_size = 27
+    box_size = 30
     gap = 8
 
     for idx, label in enumerate(labels):
@@ -192,19 +210,19 @@ def draw_wavehome_overlay(
     primary_command_label,
     now,
 ):
-    _, frame_width = frame.shape[:2]
-    overlay_height = 145
+    frame_height, frame_width = frame.shape[:2]
+    bottom_y = frame_height - BOTTOM_BAR_HEIGHT
 
-    overlay = frame.copy()
-    cv2.rectangle(overlay, (0, 0), (frame_width, overlay_height), (12, 12, 12), -1)
-    cv2.addWeighted(overlay, 0.78, frame, 0.22, 0, frame)
-    cv2.line(frame, (0, overlay_height), (frame_width, overlay_height), (80, 80, 80), 1)
+    draw_translucent_rect(frame, (0, 0), (frame_width, TOP_BAR_HEIGHT), (12, 12, 12), 0.82)
+    draw_translucent_rect(frame, (0, bottom_y), (frame_width, frame_height), (12, 12, 12), 0.82)
+    cv2.line(frame, (0, TOP_BAR_HEIGHT), (frame_width, TOP_BAR_HEIGHT), (70, 70, 70), 1)
+    cv2.line(frame, (0, bottom_y), (frame_width, bottom_y), (70, 70, 70), 1)
 
-    draw_plain_text(frame, APP_NAME, (10, 31), 0.78, (255, 255, 255), 2)
+    draw_plain_text(frame, APP_NAME, (16, 34), 0.88, (255, 255, 255), 2)
     draw_plain_text(
         frame,
         "gesture smart home control",
-        (142, 31),
+        (165, 34),
         0.45,
         (190, 220, 230),
         1,
@@ -213,7 +231,7 @@ def draw_wavehome_overlay(
     draw_plain_text(
         frame,
         f"Hands: {hands_status}",
-        (10, 62),
+        (16, 65),
         0.55,
         (255, 255, 255),
         2,
@@ -221,32 +239,44 @@ def draw_wavehome_overlay(
 
     draw_plain_text(
         frame,
-        f"FPS: {fps:.1f}   Dropped: {dropped}   Max hands: {MAX_HANDS}",
-        (10, 91),
-        0.55,
-        (255, 255, 255),
-        2,
-    )
-
-    draw_plain_text(
-        frame,
-        f"Primary command: {primary_command_label}   Q=quit",
-        (10, 122),
-        0.52,
-        (220, 220, 220),
+        f"FPS: {fps:.1f}   Dropped: {dropped}   Max hands: {MAX_HANDS}   Q=quit",
+        (16, 88),
+        0.46,
+        (210, 210, 210),
         1,
     )
 
-    panel_x = max(350, frame_width - 285)
+    draw_plain_text(
+        frame,
+        f"Cmd: {primary_command_label}",
+        (360, 34),
+        0.46,
+        (225, 225, 225),
+        1,
+    )
+
+    panel_x = frame_width - 252
+    panel_y = 14
+    panel_w = 236
+    panel_h = 70
     lamp_color = (0, 220, 255) if controller.lamp_on else (95, 95, 95)
     lamp_text = "ON" if controller.lamp_on else "OFF"
 
-    cv2.circle(frame, (panel_x + 22, 29), 15, lamp_color, -1)
-    cv2.circle(frame, (panel_x + 22, 29), 18, (245, 245, 245), 1)
+    draw_translucent_rect(
+        frame,
+        (panel_x, panel_y),
+        (panel_x + panel_w, panel_y + panel_h),
+        (28, 28, 28),
+        0.78,
+    )
+    cv2.rectangle(frame, (panel_x, panel_y), (panel_x + panel_w, panel_y + panel_h), (90, 90, 90), 1)
+
+    cv2.circle(frame, (panel_x + 28, panel_y + 28), 16, lamp_color, -1)
+    cv2.circle(frame, (panel_x + 28, panel_y + 28), 19, (245, 245, 245), 1)
     cv2.rectangle(
         frame,
-        (panel_x + 13, 46),
-        (panel_x + 31, 52),
+        (panel_x + 18, panel_y + 47),
+        (panel_x + 38, panel_y + 53),
         (180, 180, 180),
         -1,
     )
@@ -254,46 +284,63 @@ def draw_wavehome_overlay(
     draw_plain_text(
         frame,
         f"Virtual lamp: {lamp_text}",
-        (panel_x + 50, 33),
-        0.58,
+        (panel_x + 58, panel_y + 28),
+        0.54,
         (255, 255, 255),
         2,
     )
 
+    bar_x = panel_x + 58
+    bar_y = panel_y + 44
+    bar_w = 154
+    bar_h = 10
+    fill_w = int(bar_w * controller.brightness / 100)
+    cv2.rectangle(frame, (bar_x, bar_y), (bar_x + bar_w, bar_y + bar_h), (72, 72, 72), -1)
+    cv2.rectangle(frame, (bar_x, bar_y), (bar_x + fill_w, bar_y + bar_h), (0, 190, 255), -1)
+    cv2.rectangle(frame, (bar_x, bar_y), (bar_x + bar_w, bar_y + bar_h), (220, 220, 220), 1)
+
     draw_plain_text(
         frame,
         f"Brightness: {controller.brightness}%",
-        (panel_x + 50, 61),
-        0.48,
+        (panel_x + 58, panel_y + 66),
+        0.42,
         (210, 210, 210),
         1,
     )
 
     draw_plain_text(
         frame,
-        "Toggle: 5 > F > 5 > F",
-        (panel_x, 86),
-        0.42,
-        (235, 235, 235),
-        1,
+        "Toggle lamp",
+        (16, bottom_y + 28),
+        0.56,
+        (255, 255, 255),
+        2,
     )
+    draw_plain_text(frame, "5 fingers > fist > 5 fingers > fist", (16, bottom_y + 55), 0.47, (218, 218, 218), 1)
+    draw_sequence_steps(frame, controller, (285, bottom_y + 32))
 
     draw_plain_text(
         frame,
-        "Dim: F > thumb up/down, hold 3s",
-        (panel_x, 105),
-        0.38,
-        (235, 235, 235),
+        "Brightness",
+        (460, bottom_y + 28),
+        0.56,
+        (255, 255, 255),
+        2,
+    )
+    draw_plain_text(
+        frame,
+        "fist > thumb up/down, hold 3s",
+        (460, bottom_y + 55),
+        0.47,
+        (218, 218, 218),
         1,
     )
-
-    draw_sequence_steps(frame, controller, (panel_x, 113))
 
     draw_plain_text(
         frame,
         controller.active_message(now),
-        (panel_x, 139),
-        0.40,
+        (16, bottom_y + 78),
+        0.42,
         (0, 220, 255),
         1,
     )

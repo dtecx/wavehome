@@ -8,6 +8,8 @@ from mediapipe.tasks.python import vision
 from .camera import Esp32CameraStream, LocalCameraStream
 from .config import (
     APP_NAME,
+    DISPLAY_HEIGHT,
+    DISPLAY_WIDTH,
     LOCAL_CAMERA_HEIGHT,
     LOCAL_CAMERA_INDEX,
     LOCAL_CAMERA_WIDTH,
@@ -79,7 +81,7 @@ def display_loop(camera_stream):
                 print("Bad JPEG frame, skipping")
                 continue
 
-            frame = cv2.resize(frame, (640, 480))
+            frame = cv2.resize(frame, (DISPLAY_WIDTH, DISPLAY_HEIGHT))
             frame = cv2.flip(frame, 1)
 
             frame_height, _ = frame.shape[:2]
@@ -132,14 +134,14 @@ def display_loop(camera_stream):
                     draw_text_with_background(
                         frame,
                         f"H{hand_index + 1}: {handedness_text}",
-                        (x1, max(30, y1 - 10)),
+                        (x1, max(118, y1 - 10)),
                         0.55,
                     )
 
                     draw_text_with_background(
                         frame,
                         gesture,
-                        (x1, min(frame_height - 10, y2 + 25)),
+                        (x1, min(frame_height - 106, y2 + 25)),
                         0.55,
                     )
 

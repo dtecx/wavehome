@@ -10,6 +10,7 @@ The target direction is to use the same gesture command layer to control real sm
 
 - Shows the live camera frame.
 - Draws detected hand landmarks, bones, bounding boxes, gesture labels, and finger states.
+- Uses an 800x600-friendly overlay with compact top, bottom, and hand-state panels.
 - Controls a virtual lamp:
   - Toggle ON/OFF: `5 fingers up -> fist -> 5 fingers up -> fist` within 15 seconds.
   - Brightness: `fist -> thumb up/down`, then hold thumb up or down. Every 3 seconds changes brightness by 10%.
@@ -53,7 +54,6 @@ Press `q` in the OpenCV window to quit.
 
 ## Next Steps
 
-- Improve the overlay layout for 800x600 ESP32-CAM frames so text does not overlap hands or other UI.
 - Add a real Google Home or Home Assistant integration layer.
 - Add simple config loading from environment variables or a local config file.
 - Add automated unit tests for gesture sequencing and brightness stepping.

@@ -14,6 +14,8 @@ LOCAL_CAMERA_WIDTH = 800
 LOCAL_CAMERA_HEIGHT = 600
 
 MAX_HANDS = 2
+DISPLAY_WIDTH = 800
+DISPLAY_HEIGHT = 600
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MODEL_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task"

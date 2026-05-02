@@ -9,6 +9,7 @@ The project is aimed at making smart home control more accessible for deaf, hard
 - Live camera display from an ESP32-CAM MJPEG stream.
 - MediaPipe hand landmark detection.
 - Hand bones, bounding boxes, gesture labels, and finger-state overlays.
+- 800x600-friendly OpenCV UI with compact status panels.
 - Virtual lamp state shown on screen.
 - Gesture command support:
   - Toggle lamp: `5 fingers up -> fist -> 5 fingers up -> fist`
@@ -105,7 +106,6 @@ Brightness is clamped between 0% and 100%.
 
 ## Roadmap
 
-- Cleaner 800x600-friendly UI layout.
 - Real smart home device adapter.
 - Google Home or Home Assistant integration.
 - Config file or environment-variable based setup.
