@@ -1,6 +1,6 @@
 import math
 
-from .config import COMMAND_LABELS
+from .gesture_catalog import gesture_label
 from .geometry import angle_2d, distance_2d
 
 
@@ -220,7 +220,4 @@ def command_key_from_hand(finger_count, fingers, landmarks):
 
 
 def command_label(command_key, fallback="none"):
-    if command_key is None:
-        return fallback
-
-    return COMMAND_LABELS[command_key]
+    return gesture_label(command_key, fallback)
