@@ -432,7 +432,8 @@ class WorkflowEngine:
             {"next_action_at": 0.0},
         )
 
-        if now < state["next_action_at"]:
+        next_action_at = state.get("next_action_at") or 0.0
+        if now < next_action_at:
             return None
 
         repeat_seconds = trigger.get("repeat_ms", 250) / 1000.0

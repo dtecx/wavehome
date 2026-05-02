@@ -336,3 +336,37 @@ def test_repeat_hold_waits_then_repeats():
     assert engine.update("THUMB_UP", 1.2) is None
     assert engine.update("THUMB_UP", 1.5) == "virtual_lamp.brightness_step"
     assert adapter.calls == 2
+
+
+def test_value_control_recovers_after_empty_frame_reset():
+    class Adapter:
+        def __init__(self):
+            self.actions = []
+
+        def execute(self, action):
+            self.actions.append(action)
+            return action["kind"]
+
+    rules = [
+        {
+            "id": "color_value",
+            "name": "Color value",
+            "enabled": True,
+            "trigger": {
+                "kind": "value_control",
+                "gesture": "PEACE",
+                "repeat_ms": 250,
+            },
+            "action": {
+                "kind": "virtual_lamp.color_set",
+            },
+        }
+    ]
+
+    adapter = Adapter()
+    engine = WorkflowEngine(rules, adapter)
+
+    assert engine.update("PEACE", 0.0, -20.0) == "virtual_lamp.color_set"
+    assert engine.update(None, 0.1) is None
+    assert engine.update("PEACE", 0.2, 20.0) == "virtual_lamp.color_set"
+    assert [action["value"] for action in adapter.actions] == [-20.0, 20.0]
