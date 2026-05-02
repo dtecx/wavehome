@@ -33,20 +33,39 @@ def is_finger_open(landmarks, mcp_id, pip_id, dip_id, tip_id):
 def is_thumb_open(landmarks):
     wrist = landmarks[0]
     thumb_cmc = landmarks[1]
+    thumb_mcp = landmarks[2]
     thumb_ip = landmarks[3]
     thumb_tip = landmarks[4]
     index_mcp = landmarks[5]
+    middle_mcp = landmarks[9]
 
-    tip_distance = distance_2d(wrist, thumb_tip)
-    ip_distance = distance_2d(wrist, thumb_ip)
+    palm_size = max(distance_2d(wrist, middle_mcp), 0.001)
+    tip_from_wrist = distance_2d(wrist, thumb_tip)
+    ip_from_wrist = distance_2d(wrist, thumb_ip)
+    tip_from_thumb_mcp = distance_2d(thumb_mcp, thumb_tip)
+    ip_from_thumb_mcp = distance_2d(thumb_mcp, thumb_ip)
+    tip_from_index_mcp = distance_2d(thumb_tip, index_mcp)
+    ip_from_index_mcp = distance_2d(thumb_ip, index_mcp)
+    tip_from_middle_mcp = distance_2d(thumb_tip, middle_mcp)
 
-    thumb_angle = angle_2d(thumb_cmc, thumb_ip, thumb_tip)
+    mcp_angle = angle_2d(thumb_cmc, thumb_mcp, thumb_ip)
+    ip_angle = angle_2d(thumb_mcp, thumb_ip, thumb_tip)
 
-    far_from_wrist = tip_distance > ip_distance * 1.15
-    away_from_index = distance_2d(thumb_tip, index_mcp) > distance_2d(thumb_ip, index_mcp) * 1.20
-    straight_enough = thumb_angle > 130
+    extends_from_wrist = tip_from_wrist > ip_from_wrist + palm_size * 0.03
+    extends_from_thumb_base = tip_from_thumb_mcp > ip_from_thumb_mcp + palm_size * 0.06
+    separated_from_palm = (
+        tip_from_index_mcp > palm_size * 0.30
+        and tip_from_middle_mcp > palm_size * 0.38
+        and tip_from_index_mcp > ip_from_index_mcp + palm_size * 0.02
+    )
+    straight_enough = mcp_angle > 95 and ip_angle > 130
 
-    return far_from_wrist and away_from_index and straight_enough
+    return (
+        extends_from_wrist
+        and extends_from_thumb_base
+        and separated_from_palm
+        and straight_enough
+    )
 
 
 def count_fingers(landmarks):
