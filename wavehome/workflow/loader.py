@@ -30,6 +30,12 @@ def ensure_editable_rules_file(path: Path | None = None) -> Path:
     return rules_path
 
 
+def default_rules() -> dict[str, Any]:
+    with DEFAULT_RULES_PATH.open("r", encoding="utf-8") as file:
+        config = json.load(file)
+    return validate_rules_config(config)
+
+
 def load_rules(path: Path | None = None) -> dict[str, Any]:
     rules_path = path or ensure_editable_rules_file()
 
@@ -44,11 +50,18 @@ def save_rules(config: dict[str, Any], path: Path | None = None) -> dict[str, An
     validated = validate_rules_config(config)
 
     rules_path.parent.mkdir(parents=True, exist_ok=True)
+
     with rules_path.open("w", encoding="utf-8") as file:
         json.dump(validated, file, indent=2, ensure_ascii=False)
         file.write("\n")
 
     return validated
+
+
+def reset_rules(path: Path | None = None) -> dict[str, Any]:
+    rules_path = path or editable_rules_path()
+    config = default_rules()
+    return save_rules(config, rules_path)
 
 
 def enabled_rules(config: dict[str, Any]) -> list[dict[str, Any]]:
