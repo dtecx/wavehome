@@ -3,58 +3,93 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>waveHome Workflow Dashboard</title>
+  <title>waveHome Scenario Dashboard</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <header class="app-header">
-    <div>
-      <p class="eyebrow">waveHome</p>
-      <h1>Workflow block editor</h1>
-      <p class="subtitle">Build gesture combinations, timings, confirmations, and lamp actions without hardcoding Python rules.</p>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">wH</span>
+      <div>
+        <p class="eyebrow">waveHome</p>
+        <h1>Scenario dashboard</h1>
+      </div>
     </div>
 
-    <nav class="toolbar">
+    <nav class="toolbar" aria-label="Dashboard actions">
       <button id="reload" type="button">Reload</button>
       <button id="validate" type="button">Validate</button>
       <button id="save" type="button" class="primary">Save rules</button>
-      <button id="reset" type="button" class="danger">Reset defaults</button>
+      <button id="reset" type="button" class="danger">Reset</button>
     </nav>
   </header>
 
-  <section id="message" class="message info">Loading...</section>
+  <section id="message" class="message info" role="status">Loading...</section>
 
-  <main class="layout">
-    <section class="main-panel">
+  <main class="dashboard-shell">
+    <aside class="palette-panel" aria-label="Block palette">
       <div class="panel-heading">
         <div>
-          <h2>Rules</h2>
-          <p id="rule-count" class="muted">0 rules</p>
+          <h2>Blocks</h2>
+          <p id="rule-count" class="muted">0 scenarios</p>
         </div>
-        <button type="button" data-op="add-rule">Add blank rule</button>
+        <button type="button" data-op="add-rule" class="primary small">New</button>
       </div>
 
-      <div id="rules" class="rules-list"></div>
-    </section>
-
-    <aside class="side-panel">
-      <section class="panel">
-        <h2>Presets</h2>
-        <p class="muted">Fast-start blocks for safe gesture control.</p>
+      <section class="palette-section">
+        <h3>Presets</h3>
         <div id="presets" class="preset-list"></div>
       </section>
 
-      <section class="panel">
-        <h2>Capabilities</h2>
-        <div id="capabilities"></div>
+      <section class="palette-section">
+        <h3>Gestures</h3>
+        <div id="gesture-palette" class="gesture-grid"></div>
       </section>
+    </aside>
 
-      <section class="panel raw-panel">
-        <div class="panel-heading compact">
-          <h2>Raw JSON</h2>
+    <section class="scenario-panel" aria-label="Scenario board">
+      <div class="panel-heading sticky-heading">
+        <div>
+          <h2>Scenarios</h2>
+          <p class="muted">Predefined virtual lamp rules stay editable here.</p>
+        </div>
+        <div class="view-tabs" role="tablist" aria-label="Editor view">
+          <button id="blocks-tab" type="button" class="tab active" data-view="blocks">Blocks</button>
+          <button id="json-tab" type="button" class="tab" data-view="json">JSON</button>
+        </div>
+      </div>
+
+      <div id="block-view">
+        <div id="rules" class="scenario-board"></div>
+      </div>
+
+      <div id="json-view" class="json-view hidden">
+        <div class="json-toolbar">
           <button id="format" type="button">Format JSON</button>
         </div>
-        <textarea id="raw-json" spellcheck="false"></textarea>
+        <textarea id="raw-json" spellcheck="false" aria-label="Raw rule JSON"></textarea>
+      </div>
+    </section>
+
+    <aside class="inspector-panel" aria-label="Selected scenario">
+      <div id="inspector"></div>
+
+      <section class="device-panel">
+        <h2>Test target</h2>
+        <div class="lamp-preview" aria-hidden="true">
+          <span class="lamp-bulb"></span>
+          <span class="lamp-base"></span>
+        </div>
+        <dl class="target-list">
+          <div>
+            <dt>Device</dt>
+            <dd>Virtual lamp</dd>
+          </div>
+          <div>
+            <dt>Future</dt>
+            <dd>Google Home bridge</dd>
+          </div>
+        </dl>
       </section>
     </aside>
   </main>
