@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "id": "toggle_virtual_lamp",
+      "enabled": true,
+      "name": "Toggle virtual lamp",
+      "trigger": {
+        "kind": "sequence",
+        "steps": [
+          { "gesture": "OPEN_PALM", "hold_ms": 300 },
+          { "gesture": "FIST", "hold_ms": 300 },
+          { "gesture": "OPEN_PALM", "hold_ms": 300 },
+          { "gesture": "FIST", "hold_ms": 300 }
+        ],
+        "max_total_ms": 15000,
+        "max_gap_ms": 4000
+      },
+      "safety": {
+        "cooldown_ms": 1500,
+        "confirmation": {
+          "required": false
+        }
+      },
+      "action": {
+        "kind": "virtual_lamp.toggle"
+      }
+    },
+    {
+      "id": "brightness_up",
+      "enabled": true,
+      "name": "Brightness up",
+      "trigger": {
+        "kind": "armed_hold",
+        "arm_gesture": "FIST",
+        "gesture": "THUMB_UP",
+        "arm_timeout_ms": 8000,
+        "repeat_ms": 3000
+      },
+      "safety": {
+        "cooldown_ms": 0,
+        "confirmation": {
+          "required": false
+        }
+      },
+      "action": {
+        "kind": "virtual_lamp.brightness_step",
+        "direction": 1,
+        "step_percent": 10
+      }
+    },
+    {
+      "id": "brightness_down",
+      "enabled": true,
+      "name": "Brightness down",
+      "trigger": {
+        "kind": "armed_hold",
+        "arm_gesture": "FIST",
+        "gesture": "THUMB_DOWN",
+        "arm_timeout_ms": 8000,
+        "repeat_ms": 3000
+      },
+      "safety": {
+        "cooldown_ms": 0,
+        "confirmation": {
+          "required": false
+        }
+      },
+      "action": {
+        "kind": "virtual_lamp.brightness_step",
+        "direction": -1,
+        "step_percent": 10
+      }
+    },
+    {
+      "id": "party_mode",
+      "enabled": true,
+      "name": "Party mode",
+      "trigger": {
+        "kind": "sequence",
+        "steps": [
+          { "gesture": "FIST", "hold_ms": 300 },
+          { "gesture": "HORNS", "hold_ms": 300 },
+          { "gesture": "FIST", "hold_ms": 300 }
+        ],
+        "max_total_ms": 10000,
+        "max_gap_ms": 4000
+      },
+      "safety": {
+        "cooldown_ms": 1500,
+        "confirmation": {
+          "required": false
+        }
+      },
+      "action": {
+        "kind": "virtual_lamp.toggle_party"
+      }
+    },
+    {
+      "id": "all_off_confirmed",
+      "enabled": false,
+      "name": "All off with confirmation",
+      "trigger": {
+        "kind": "hold",
+        "gesture": "BOTH_FISTS",
+        "hold_ms": 2000
+      },
+      "safety": {
+        "cooldown_ms": 10000,
+        "confirmation": {
+          "required": true,
+          "gesture": "TWO_THUMBS_UP",
+          "timeout_ms": 4000
+        }
+      },
+      "action": {
+        "kind": "virtual_lamp.turn_off"
+      }
+    }
+  ]
+}
