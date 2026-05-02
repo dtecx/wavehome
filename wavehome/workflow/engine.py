@@ -14,6 +14,7 @@ class WorkflowEngine:
 
         self.cooldowns: dict[str, float] = {}
         self.pending_confirmation: dict[str, Any] | None = None
+        self.command_mode_until = 0.0
 
         self.message = "Workflow engine ready"
 
@@ -68,7 +69,12 @@ class WorkflowEngine:
             rule = pending["rule"]
             self.pending_confirmation = None
 
-            result = self.action_adapter.execute(rule.get("action", {}))
+            action = rule.get("action", {})
+            result = self._execute_action(action, now)
+
+            if result is None:
+                result = self.action_adapter.execute(action)
+
             self._set_cooldown(rule, now)
 
             self.message = f"Confirmed: {rule.get('name', rule['id'])}"
@@ -82,6 +88,36 @@ class WorkflowEngine:
         self.message = f"Waiting for confirmation: {pending['gesture']}"
         return None
 
+
+    def _command_mode_active(self, now: float) -> bool:
+        return now < self.command_mode_until
+
+    def _requires_command_mode(self, rule: dict[str, Any]) -> bool:
+        safety = rule.get("safety", {})
+        command_mode = safety.get("command_mode", {})
+        return bool(command_mode.get("required", False))
+
+    def _execute_action(self, action: dict[str, Any], now: float) -> str | None:
+        kind = action.get("kind")
+
+        if kind == "workflow.enter_command_mode":
+            duration_ms = int(action.get("duration_ms", 10000))
+            self.command_mode_until = now + duration_ms / 1000.0
+            return "command_mode_entered"
+
+        if kind == "workflow.exit_command_mode":
+            self.command_mode_until = 0.0
+            return "command_mode_exited"
+
+        if kind == "workflow.cancel":
+            self.pending_confirmation = None
+            self.sequence_state.clear()
+            self.hold_state.clear()
+            self.armed_hold_state.clear()
+            return "workflow_cancelled"
+
+        return None
+
     def _on_cooldown(self, rule: dict[str, Any], now: float) -> bool:
         until = self.cooldowns.get(rule["id"], 0.0)
         return now < until
@@ -92,8 +128,17 @@ class WorkflowEngine:
         if cooldown_ms > 0:
             self.cooldowns[rule["id"]] = now + cooldown_ms / 1000.0
 
-    def _execute_rule(self, rule: dict[str, Any], now: float) -> str | None:
+    def _execute_rule(
+        self,
+        rule: dict[str, Any],
+        now: float,
+        action_override: dict[str, Any] | None = None,
+    ) -> str | None:
         if self._on_cooldown(rule, now):
+            return None
+
+        if self._requires_command_mode(rule) and not self._command_mode_active(now):
+            self.message = "Command mode required"
             return None
 
         confirmation = rule.get("safety", {}).get("confirmation", {})
@@ -108,10 +153,22 @@ class WorkflowEngine:
             self.message = f"Confirm: {rule.get('name', rule['id'])}"
             return "pending_confirmation"
 
-        result = self.action_adapter.execute(rule.get("action", {}))
+        action = action_override or rule.get("action", {})
+        result = self._execute_action(action, now)
+
+        if result is None:
+            result = self.action_adapter.execute(action)
+
         self._set_cooldown(rule, now)
 
-        self.message = f"Executed: {rule.get('name', rule['id'])}"
+        if result == "command_mode_entered":
+            duration_left = max(0.0, self.command_mode_until - now)
+            self.message = f"Command mode active for {duration_left:.0f}s"
+        elif result == "workflow_cancelled":
+            self.message = "Workflow cancelled"
+        else:
+            self.message = f"Executed: {rule.get('name', rule['id'])}"
+
         return result
 
     def _update_sequence_rule(
