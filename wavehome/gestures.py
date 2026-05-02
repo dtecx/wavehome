@@ -33,7 +33,6 @@ def is_finger_open(landmarks, mcp_id, pip_id, dip_id, tip_id):
 def is_thumb_open(landmarks):
     wrist = landmarks[0]
     thumb_cmc = landmarks[1]
-    thumb_mcp = landmarks[2]
     thumb_ip = landmarks[3]
     thumb_tip = landmarks[4]
     index_mcp = landmarks[5]
@@ -46,14 +45,8 @@ def is_thumb_open(landmarks):
     far_from_wrist = tip_distance > ip_distance * 1.15
     away_from_index = distance_2d(thumb_tip, index_mcp) > distance_2d(thumb_ip, index_mcp) * 1.20
     straight_enough = thumb_angle > 130
-    vertical_delta = thumb_tip.y - wrist.y
-    vertical_thumb = (
-        abs(vertical_delta) > 0.07
-        and tip_distance > ip_distance * 1.08
-        and angle_2d(thumb_mcp, thumb_ip, thumb_tip) > 120
-    )
 
-    return (far_from_wrist and away_from_index and straight_enough) or vertical_thumb
+    return far_from_wrist and away_from_index and straight_enough
 
 
 def count_fingers(landmarks):
@@ -78,23 +71,38 @@ def thumb_direction(landmarks, fingers):
     thumb_mcp = landmarks[2]
     thumb_ip = landmarks[3]
     thumb_tip = landmarks[4]
-    vertical_delta = thumb_tip.y - wrist.y
+    index_mcp = landmarks[5]
+    middle_mcp = landmarks[9]
 
-    if abs(vertical_delta) < 0.07:
+    palm_size = max(distance_2d(wrist, middle_mcp), 0.001)
+    vertical_delta = thumb_tip.y - thumb_mcp.y
+    horizontal_delta = thumb_tip.x - thumb_mcp.x
+
+    if abs(vertical_delta) < palm_size * 0.30:
         return None
 
     thumb_extended = (
-        distance_2d(wrist, thumb_tip) > distance_2d(wrist, thumb_ip) * 1.08
-        and angle_2d(thumb_mcp, thumb_ip, thumb_tip) > 120
+        distance_2d(wrist, thumb_tip) > distance_2d(wrist, thumb_ip) + palm_size * 0.12
+        and angle_2d(thumb_mcp, thumb_ip, thumb_tip) > 145
     )
+    separated_from_palm = (
+        distance_2d(thumb_tip, index_mcp) > palm_size * 0.35
+        and distance_2d(thumb_tip, index_mcp) > distance_2d(thumb_ip, index_mcp) + palm_size * 0.05
+    )
+    vertical_enough = abs(vertical_delta) > abs(horizontal_delta) * 1.05
 
-    if not thumb_extended:
+    if not (thumb_extended and separated_from_palm and vertical_enough):
         return None
 
-    if vertical_delta < 0 and thumb_tip.y < thumb_ip.y - 0.02:
+    tip_past_ip = abs(thumb_tip.y - thumb_ip.y) > palm_size * 0.08
+
+    if not tip_past_ip:
+        return None
+
+    if vertical_delta < 0 and thumb_tip.y < thumb_ip.y:
         return "UP"
 
-    if vertical_delta > 0 and thumb_tip.y > thumb_ip.y + 0.02:
+    if vertical_delta > 0 and thumb_tip.y > thumb_ip.y:
         return "DOWN"
 
     return None
