@@ -98,7 +98,7 @@
     },
     {
       "id": "all_off_confirmed",
-      "enabled": false,
+      "enabled": true,
       "name": "All off with confirmation",
       "trigger": {
         "kind": "hold",
