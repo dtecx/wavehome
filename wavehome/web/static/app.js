@@ -2,6 +2,7 @@ const state = {
   config: null,
   capabilities: null,
   presets: [],
+  diagnostics: [],
   selectedRuleId: null,
   view: "blocks",
 };
@@ -277,11 +278,20 @@ function safetySummary(rule) {
   return chips.length ? chips : ["Direct"];
 }
 
+function diagnosticsForRule(ruleId) {
+  return (state.diagnostics || []).filter((diagnostic) => diagnostic.rule_id === ruleId);
+}
+
+function warningText(count) {
+  return `${count} warning${count === 1 ? "" : "s"}`;
+}
+
 function renderRuleCard(rule, index) {
   ensureRuleShape(rule);
   const isSelected = selectedRule()?.id === rule.id;
   const trigger = rule.trigger || {};
   const action = rule.action || {};
+  const diagnostics = diagnosticsForRule(rule.id);
   return `
     <article class="scenario-card ${isSelected ? "selected" : ""} ${rule.enabled ? "" : "disabled"}" data-rule-id="${escapeHtml(rule.id)}">
       <button type="button" class="card-select" data-op="select-rule" data-rule-id="${escapeHtml(rule.id)}" aria-label="Select ${escapeHtml(rule.name)}"></button>
@@ -312,6 +322,12 @@ function renderRuleCard(rule, index) {
         </div>
       </div>
 
+      ${diagnostics.length ? `
+        <div class="rule-warnings">
+          ${diagnostics.map((diagnostic) => `<span>${escapeHtml(diagnostic.message)}</span>`).join("")}
+        </div>
+      ` : ""}
+
       <div class="card-actions">
         <button type="button" data-op="move-rule-up" data-index="${index}" ${index === 0 ? "disabled" : ""}>Up</button>
         <button type="button" data-op="move-rule-down" data-index="${index}" ${index === (state.config.rules.length - 1) ? "disabled" : ""}>Down</button>
@@ -319,6 +335,33 @@ function renderRuleCard(rule, index) {
         <button type="button" class="danger" data-op="delete-rule" data-index="${index}">Delete</button>
       </div>
     </article>
+  `;
+}
+
+function renderDiagnostics() {
+  const diagnostics = state.diagnostics || [];
+  const box = $("#diagnostics");
+
+  if (!diagnostics.length) {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+
+  box.classList.remove("hidden");
+  box.innerHTML = `
+    <div class="diagnostics-head">
+      <strong>${warningText(diagnostics.length)}</strong>
+      <span>Validation found risky rule settings.</span>
+    </div>
+    <ul>
+      ${diagnostics.map((diagnostic) => `
+        <li>
+          <strong>${escapeHtml(diagnostic.rule_id || "config")}</strong>
+          <span>${escapeHtml(diagnostic.message)}</span>
+        </li>
+      `).join("")}
+    </ul>
   `;
 }
 
@@ -593,6 +636,7 @@ function render() {
   renderInspector();
   renderRaw();
   renderView();
+  renderDiagnostics();
 }
 
 async function loadAll() {
@@ -621,17 +665,25 @@ async function saveRules() {
     body: JSON.stringify(config),
   });
   state.config = saved;
+  state.diagnostics = [];
   if (!selectedRule()) state.selectedRuleId = saved.rules?.[0]?.id || null;
   render();
   showMessage("Saved rules.", "ok");
 }
 
 async function validateRules() {
-  await fetchJson("/api/rules/validate", {
+  const result = await fetchJson("/api/rules/validate", {
     method: "POST",
     body: JSON.stringify(configFromRaw()),
   });
-  showMessage("Rules are valid.", "ok");
+  state.config = result.config;
+  state.diagnostics = result.diagnostics || [];
+  render();
+  if (state.diagnostics.length) {
+    showMessage(`Rules are valid with ${warningText(state.diagnostics.length)}.`, "info");
+  } else {
+    showMessage("Rules are valid.", "ok");
+  }
 }
 
 async function resetRules() {
@@ -690,8 +742,10 @@ function updateNested(scope, element) {
     rule.safety.confirmation[field] = element.type === "number" ? numberValue(value) : value;
   }
 
+  state.diagnostics = [];
   syncRawOnly();
   renderRules();
+  renderDiagnostics();
 }
 
 function handleFieldChange(event) {
@@ -704,6 +758,7 @@ function handleFieldChange(event) {
 
   if (scope === "trigger-kind") {
     rule.trigger = defaultTrigger(element.value);
+    state.diagnostics = [];
     syncRawOnly();
     render();
     return;
@@ -711,6 +766,7 @@ function handleFieldChange(event) {
 
   if (scope === "action-kind") {
     rule.action = defaultAction(element.value);
+    state.diagnostics = [];
     syncRawOnly();
     render();
     return;
@@ -720,24 +776,30 @@ function handleFieldChange(event) {
     const stepIndex = Number(element.dataset.step);
     const field = element.dataset.field;
     rule.trigger.steps[stepIndex][field] = element.type === "number" ? numberValue(element.value) : element.value;
+    state.diagnostics = [];
     syncRawOnly();
     renderRules();
+    renderDiagnostics();
     return;
   }
 
   if (scope === "command-mode") {
     rule.safety.command_mode ||= { required: false };
     rule.safety.command_mode.required = element.checked;
+    state.diagnostics = [];
     syncRawOnly();
     renderRules();
+    renderDiagnostics();
     return;
   }
 
   if (scope === "confirmation-required") {
     rule.safety.confirmation ||= { required: false, gesture: "TWO_THUMBS_UP", timeout_ms: 4000 };
     rule.safety.confirmation.required = element.checked;
+    state.diagnostics = [];
     syncRawOnly();
     renderRules();
+    renderDiagnostics();
     return;
   }
 
@@ -769,7 +831,12 @@ function handleClick(event) {
 
   if (op === "select-rule") {
     selectRule(button.dataset.ruleId);
-  } else if (op === "add-rule") {
+    return;
+  }
+
+  state.diagnostics = [];
+
+  if (op === "add-rule") {
     insertRule(defaultRule());
   } else if (op === "delete-rule") {
     const [removed] = state.config.rules.splice(index, 1);

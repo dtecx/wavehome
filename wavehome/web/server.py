@@ -10,7 +10,7 @@ from wavehome.gesture_catalog import GESTURE_CATALOG
 from wavehome.workflow.catalog import workflow_catalog
 from wavehome.workflow.loader import load_rules, reset_rules, save_rules
 from wavehome.workflow.presets import get_rule_presets
-from wavehome.workflow.schema import RuleValidationError, validate_rules_config
+from wavehome.workflow.schema import RuleValidationError, validate_rules_with_diagnostics
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -53,7 +53,7 @@ def rules():
 @app.post("/api/rules/validate")
 def validate_rules(config: dict):
     try:
-        return {"ok": True, "config": validate_rules_config(config)}
+        return validate_rules_with_diagnostics(config)
     except RuleValidationError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
