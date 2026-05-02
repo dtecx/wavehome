@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from wavehome.gesture_catalog import GESTURE_CATALOG
 from wavehome.workflow.loader import load_rules, save_rules
@@ -11,7 +15,15 @@ from wavehome.workflow.schema import (
 )
 
 
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+
 app = FastAPI(title="waveHome Dashboard API")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/")
+def dashboard():
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/api/health")
