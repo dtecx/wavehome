@@ -7,13 +7,10 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from wavehome.gesture_catalog import GESTURE_CATALOG
+from wavehome.workflow.catalog import workflow_catalog
 from wavehome.workflow.loader import load_rules, save_rules
-from wavehome.workflow.schema import (
-    ACTION_KINDS,
-    TRIGGER_KINDS,
-    RuleValidationError,
-)
-
+from wavehome.workflow.presets import get_rule_presets
+from wavehome.workflow.schema import RuleValidationError
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -33,24 +30,19 @@ def health():
 
 @app.get("/api/capabilities")
 def capabilities():
-    return {
-        "gestures": GESTURE_CATALOG,
-        "trigger_kinds": sorted(TRIGGER_KINDS),
-        "action_kinds": sorted(ACTION_KINDS),
-        "safety_blocks": [
-            "cooldown",
-            "confirmation",
-            "command_mode",
-            "min_confidence",
-            "max_total_time",
-            "max_step_gap",
-        ],
-    }
+    catalog = workflow_catalog()
+    catalog["gestures"] = GESTURE_CATALOG
+    return catalog
 
 
 @app.get("/api/gestures")
 def gestures():
     return GESTURE_CATALOG
+
+
+@app.get("/api/presets")
+def presets():
+    return get_rule_presets()
 
 
 @app.get("/api/rules")
