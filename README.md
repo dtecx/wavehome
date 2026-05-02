@@ -134,19 +134,89 @@ The same sequence toggles party mode on or off. Party mode turns the lamp on, cy
 - Gesture calibration and automated tests.
 
 
-## Dashboard API prototype
 
-Run the dashboard API:
+## Rule-based workflow mode
+
+The `feature/rule-based-gestures` branch supports an experimental rule-based workflow engine.
+
+Instead of hardcoding every gesture directly in Python, gestures are converted into workflow events. Rules from `wavehome/rules/default_rules.json` decide what action should happen.
+
+### Safety model
+
+The default rules use command mode to reduce accidental triggers:
+
+```text
+both open palms held for 1s -> command mode active
+command mode active -> normal rules are allowed
+command mode expired -> protected rules are ignored
+```
+
+For testing with one hand, there is also a fallback wake rule:
+
+```text
+open palm held for 1.8s -> command mode active
+```
+
+Dangerous/global actions can also require confirmation. For example:
+
+```text
+both fists held -> pending confirmation
+two thumbs up -> execute all off
+thumb down -> cancel
+```
+
+
+Dashboard
+
+Run the dashboard API and editor:
 
 ```bash
 uvicorn wavehome.web.server:app --reload --host 127.0.0.1 --port 8080
 ```
 
-Endpoints:
+Open:
+```text
+http://127.0.0.1:8080/
+```
 
+Useful API endpoints:
+
+```text
 GET /api/health
+GET /api/capabilities
 GET /api/gestures
 GET /api/rules
+PUT /api/rules
+```
 
-The dashboard API is intended to edit gesture workflow rules instead of hardcoding gesture behavior in Python.
+Current trigger types
+```text
+sequence
+hold
+armed_hold
+motion
+value_control
+```
 
+Current action types
+```text
+workflow.enter_command_mode
+workflow.exit_command_mode
+workflow.cancel
+virtual_lamp.toggle
+virtual_lamp.turn_on
+virtual_lamp.turn_off
+virtual_lamp.toggle_party
+virtual_lamp.brightness_step
+virtual_lamp.brightness_set
+virtual_lamp.color_set
+```
+
+Example flow
+```text
+1. Hold both open palms for 1 second.
+2. Command mode becomes active.
+3. Swipe up/down to change brightness.
+4. Hold peace sign and rotate it to change color.
+5. Hold both fists, then show two thumbs up, to turn everything off.
+```
