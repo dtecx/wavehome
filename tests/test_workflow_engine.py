@@ -176,3 +176,124 @@ class WorkflowEngineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CommandModeWorkflowTests(unittest.TestCase):
+    def test_rule_requires_command_mode(self):
+        actions = FakeActions()
+        engine = WorkflowEngine(
+            [
+                {
+                    "id": "toggle",
+                    "enabled": True,
+                    "name": "Toggle",
+                    "trigger": {
+                        "kind": "hold",
+                        "gesture": "FIST",
+                        "hold_ms": 0,
+                    },
+                    "safety": {
+                        "command_mode": {"required": True},
+                        "cooldown_ms": 0,
+                        "confirmation": {"required": False},
+                    },
+                    "action": {"kind": "virtual_lamp.toggle"},
+                }
+            ],
+            actions,
+        )
+
+        self.assertIsNone(engine.update("FIST", 0.0))
+        self.assertEqual(len(actions.executed), 0)
+
+    def test_enter_command_mode_allows_protected_rule(self):
+        actions = FakeActions()
+        engine = WorkflowEngine(
+            [
+                {
+                    "id": "wake",
+                    "enabled": True,
+                    "name": "Wake",
+                    "trigger": {
+                        "kind": "hold",
+                        "gesture": "OPEN_PALM",
+                        "hold_ms": 0,
+                    },
+                    "safety": {
+                        "cooldown_ms": 0,
+                        "confirmation": {"required": False},
+                    },
+                    "action": {
+                        "kind": "workflow.enter_command_mode",
+                        "duration_ms": 3000,
+                    },
+                },
+                {
+                    "id": "toggle",
+                    "enabled": True,
+                    "name": "Toggle",
+                    "trigger": {
+                        "kind": "hold",
+                        "gesture": "FIST",
+                        "hold_ms": 0,
+                    },
+                    "safety": {
+                        "command_mode": {"required": True},
+                        "cooldown_ms": 0,
+                        "confirmation": {"required": False},
+                    },
+                    "action": {"kind": "virtual_lamp.toggle"},
+                },
+            ],
+            actions,
+        )
+
+        self.assertEqual(engine.update("OPEN_PALM", 0.0), "command_mode_entered")
+        self.assertEqual(engine.update("FIST", 1.0), "virtual_lamp.toggle")
+        self.assertEqual(len(actions.executed), 1)
+
+    def test_command_mode_expires(self):
+        actions = FakeActions()
+        engine = WorkflowEngine(
+            [
+                {
+                    "id": "wake",
+                    "enabled": True,
+                    "name": "Wake",
+                    "trigger": {
+                        "kind": "hold",
+                        "gesture": "OPEN_PALM",
+                        "hold_ms": 0,
+                    },
+                    "safety": {
+                        "cooldown_ms": 0,
+                        "confirmation": {"required": False},
+                    },
+                    "action": {
+                        "kind": "workflow.enter_command_mode",
+                        "duration_ms": 1000,
+                    },
+                },
+                {
+                    "id": "toggle",
+                    "enabled": True,
+                    "name": "Toggle",
+                    "trigger": {
+                        "kind": "hold",
+                        "gesture": "FIST",
+                        "hold_ms": 0,
+                    },
+                    "safety": {
+                        "command_mode": {"required": True},
+                        "cooldown_ms": 0,
+                        "confirmation": {"required": False},
+                    },
+                    "action": {"kind": "virtual_lamp.toggle"},
+                },
+            ],
+            actions,
+        )
+
+        self.assertEqual(engine.update("OPEN_PALM", 0.0), "command_mode_entered")
+        self.assertIsNone(engine.update("FIST", 2.0))
+        self.assertEqual(len(actions.executed), 0)
