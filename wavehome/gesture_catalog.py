@@ -94,3 +94,12 @@ def gesture_label(gesture_key: str | None, fallback: str = "none") -> str:
     if gesture is None:
         return gesture_key
     return gesture["label"]
+
+
+def gesture_kind(gesture_key: str | None, fallback: str = "static") -> str:
+    if gesture_key is None:
+        return fallback
+    gesture = GESTURE_CATALOG.get(gesture_key)
+    if gesture is None:
+        return fallback
+    return gesture["kind"]

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from wavehome.events import GestureEvent
+
 
 class WorkflowEngine:
     def __init__(self, rules: list[dict[str, Any]], action_adapter):
@@ -62,6 +64,22 @@ class WorkflowEngine:
                 return action_result
 
         return None
+
+    def update_event(
+        self,
+        event: GestureEvent | None,
+        now: float | None = None,
+    ) -> str | None:
+        if event is None:
+            if now is None:
+                raise ValueError("now is required when event is None")
+            return self.update(None, now)
+
+        event_time = event.timestamp if now is None else now
+        if event_time is None:
+            raise ValueError("GestureEvent.timestamp or now is required")
+
+        return self.update(event.key, event_time, event.value)
 
     def _update_confirmation(self, stable_gesture: str | None, now: float) -> str | None:
         if self.pending_confirmation is None:

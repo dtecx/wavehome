@@ -30,6 +30,7 @@ from .drawing import (
     draw_text_with_background,
     draw_wavehome_overlay,
 )
+from .events import GestureEvent
 from .model import ensure_model_exists
 from .motion import MotionDetector
 from .providers.google_home import GoogleHomeAdapter
@@ -182,11 +183,25 @@ def display_loop(camera_stream):
 
             if USE_WORKFLOW_ENGINE and workflow_engine is not None and stable_filter is not None:
                 if motion_key is not None:
-                    stable_key = motion_key
+                    event = GestureEvent(
+                        key=motion_key,
+                        kind="motion",
+                        confidence=1.0,
+                        stable_ms=0,
+                        value=None,
+                        hand_count=len(gesture_frame.hands),
+                        timestamp=now,
+                        label=motion_key,
+                    )
                 else:
-                    stable_key = stable_filter.update(event_key, now)
+                    event = stable_filter.update_event(
+                        event_key,
+                        now,
+                        event_value,
+                        hand_count=len(gesture_frame.hands),
+                    )
 
-                workflow_engine.update(stable_key, now, event_value)
+                workflow_engine.update_event(event, now)
 
                 if workflow_engine.message:
                     lamp_controller.message = workflow_engine.message

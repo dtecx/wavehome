@@ -1,5 +1,6 @@
 import unittest
 
+from wavehome.events import GestureEvent
 from wavehome.workflow.engine import WorkflowEngine
 
 
@@ -370,3 +371,40 @@ def test_value_control_recovers_after_empty_frame_reset():
     assert engine.update(None, 0.1) is None
     assert engine.update("PEACE", 0.2, 20.0) == "virtual_lamp.color_set"
     assert [action["value"] for action in adapter.actions] == [-20.0, 20.0]
+
+
+def test_update_event_uses_normalized_event_payload():
+    actions = FakeActions()
+    engine = WorkflowEngine(
+        [
+            {
+                "id": "color_value",
+                "name": "Color value",
+                "enabled": True,
+                "trigger": {
+                    "kind": "value_control",
+                    "gesture": "PEACE",
+                    "repeat_ms": 250,
+                },
+                "action": {
+                    "kind": "virtual_lamp.color_set",
+                },
+            }
+        ],
+        actions,
+    )
+
+    result = engine.update_event(
+        GestureEvent(
+            key="PEACE",
+            kind="static",
+            confidence=0.91,
+            stable_ms=720,
+            value=-30.0,
+            hand_count=1,
+            timestamp=2.0,
+        )
+    )
+
+    assert result == "virtual_lamp.color_set"
+    assert actions.executed[0]["value"] == -30.0
