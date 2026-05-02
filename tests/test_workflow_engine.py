@@ -297,3 +297,42 @@ class CommandModeWorkflowTests(unittest.TestCase):
         self.assertEqual(engine.update("OPEN_PALM", 0.0), "command_mode_entered")
         self.assertIsNone(engine.update("FIST", 2.0))
         self.assertEqual(len(actions.executed), 0)
+
+
+def test_repeat_hold_waits_then_repeats():
+    class Adapter:
+        def __init__(self):
+            self.calls = 0
+
+        def execute(self, action):
+            self.calls += 1
+            return action["kind"]
+
+    rules = [
+        {
+            "id": "repeat_brightness",
+            "name": "Repeat brightness",
+            "enabled": True,
+            "trigger": {
+                "kind": "repeat_hold",
+                "gesture": "THUMB_UP",
+                "hold_ms": 1000,
+                "repeat_ms": 500,
+            },
+            "action": {
+                "kind": "virtual_lamp.brightness_step",
+                "direction": 1,
+                "step_percent": 10,
+            },
+        }
+    ]
+
+    adapter = Adapter()
+    engine = WorkflowEngine(rules, adapter)
+
+    assert engine.update("THUMB_UP", 0.0) == "repeat_hold_started"
+    assert engine.update("THUMB_UP", 0.5) is None
+    assert engine.update("THUMB_UP", 1.0) == "virtual_lamp.brightness_step"
+    assert engine.update("THUMB_UP", 1.2) is None
+    assert engine.update("THUMB_UP", 1.5) == "virtual_lamp.brightness_step"
+    assert adapter.calls == 2
