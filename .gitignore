@@ -1,4 +1,6 @@
 __pycache__/
+.pytest/
+.pytest_cache/
 *.task
 # Local dashboard-edited workflow rules
 wavehome/rules/user_rules.json
