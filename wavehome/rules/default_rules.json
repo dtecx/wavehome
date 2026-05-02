@@ -1,22 +1,73 @@
 {
-  "version": 1,
+  "version": 2,
   "rules": [
     {
-      "id": "toggle_virtual_lamp",
+      "id": "wake_command_mode",
+      "name": "Wake command mode",
       "enabled": true,
-      "name": "Toggle virtual lamp",
+      "trigger": {
+        "kind": "hold",
+        "gesture": "BOTH_OPEN_PALMS",
+        "hold_ms": 1000
+      },
+      "safety": {
+        "cooldown_ms": 2000,
+        "confirmation": {
+          "required": false
+        }
+      },
+      "action": {
+        "kind": "workflow.enter_command_mode",
+        "duration_ms": 12000
+      }
+    },
+    {
+      "id": "fallback_wake_command_mode",
+      "name": "Fallback wake command mode",
+      "enabled": true,
+      "trigger": {
+        "kind": "hold",
+        "gesture": "OPEN_PALM",
+        "hold_ms": 1800
+      },
+      "safety": {
+        "cooldown_ms": 3000,
+        "confirmation": {
+          "required": false
+        }
+      },
+      "action": {
+        "kind": "workflow.enter_command_mode",
+        "duration_ms": 8000
+      }
+    },
+    {
+      "id": "toggle_lamp",
+      "name": "Toggle lamp",
+      "enabled": true,
       "trigger": {
         "kind": "sequence",
         "steps": [
-          { "gesture": "OPEN_PALM", "hold_ms": 300 },
-          { "gesture": "FIST", "hold_ms": 300 },
-          { "gesture": "OPEN_PALM", "hold_ms": 300 },
-          { "gesture": "FIST", "hold_ms": 300 }
+          {
+            "gesture": "OPEN_PALM",
+            "hold_ms": 250
+          },
+          {
+            "gesture": "FIST",
+            "hold_ms": 250
+          },
+          {
+            "gesture": "OPEN_PALM",
+            "hold_ms": 250
+          }
         ],
-        "max_total_ms": 15000,
-        "max_gap_ms": 4000
+        "max_total_ms": 6000,
+        "max_gap_ms": 1800
       },
       "safety": {
+        "command_mode": {
+          "required": true
+        },
         "cooldown_ms": 1500,
         "confirmation": {
           "required": false
@@ -27,17 +78,21 @@
       }
     },
     {
-      "id": "brightness_up",
-      "enabled": true,
+      "id": "brightness_up_hold",
       "name": "Brightness up",
+      "enabled": true,
       "trigger": {
         "kind": "armed_hold",
         "arm_gesture": "FIST",
         "gesture": "THUMB_UP",
         "arm_timeout_ms": 8000,
-        "repeat_ms": 3000
+        "hold_ms": 600,
+        "repeat_ms": 900
       },
       "safety": {
+        "command_mode": {
+          "required": true
+        },
         "cooldown_ms": 0,
         "confirmation": {
           "required": false
@@ -50,17 +105,21 @@
       }
     },
     {
-      "id": "brightness_down",
-      "enabled": true,
+      "id": "brightness_down_hold",
       "name": "Brightness down",
+      "enabled": true,
       "trigger": {
         "kind": "armed_hold",
         "arm_gesture": "FIST",
         "gesture": "THUMB_DOWN",
         "arm_timeout_ms": 8000,
-        "repeat_ms": 3000
+        "hold_ms": 600,
+        "repeat_ms": 900
       },
       "safety": {
+        "command_mode": {
+          "required": true
+        },
         "cooldown_ms": 0,
         "confirmation": {
           "required": false
@@ -73,21 +132,101 @@
       }
     },
     {
-      "id": "party_mode",
+      "id": "swipe_brightness_up",
+      "name": "Swipe up brightness",
       "enabled": true,
+      "trigger": {
+        "kind": "motion",
+        "gesture": "SWIPE_UP"
+      },
+      "safety": {
+        "command_mode": {
+          "required": true
+        },
+        "cooldown_ms": 700,
+        "confirmation": {
+          "required": false
+        }
+      },
+      "action": {
+        "kind": "virtual_lamp.brightness_step",
+        "direction": 1,
+        "step_percent": 10
+      }
+    },
+    {
+      "id": "swipe_brightness_down",
+      "name": "Swipe down brightness",
+      "enabled": true,
+      "trigger": {
+        "kind": "motion",
+        "gesture": "SWIPE_DOWN"
+      },
+      "safety": {
+        "command_mode": {
+          "required": true
+        },
+        "cooldown_ms": 700,
+        "confirmation": {
+          "required": false
+        }
+      },
+      "action": {
+        "kind": "virtual_lamp.brightness_step",
+        "direction": -1,
+        "step_percent": 10
+      }
+    },
+    {
+      "id": "peace_rotation_color",
+      "name": "Peace rotation color",
+      "enabled": true,
+      "trigger": {
+        "kind": "value_control",
+        "gesture": "PEACE",
+        "repeat_ms": 250
+      },
+      "safety": {
+        "command_mode": {
+          "required": true
+        },
+        "cooldown_ms": 0,
+        "confirmation": {
+          "required": false
+        }
+      },
+      "action": {
+        "kind": "virtual_lamp.color_set"
+      }
+    },
+    {
+      "id": "party_mode",
       "name": "Party mode",
+      "enabled": true,
       "trigger": {
         "kind": "sequence",
         "steps": [
-          { "gesture": "FIST", "hold_ms": 300 },
-          { "gesture": "HORNS", "hold_ms": 300 },
-          { "gesture": "FIST", "hold_ms": 300 }
+          {
+            "gesture": "FIST",
+            "hold_ms": 250
+          },
+          {
+            "gesture": "HORNS",
+            "hold_ms": 250
+          },
+          {
+            "gesture": "FIST",
+            "hold_ms": 250
+          }
         ],
-        "max_total_ms": 10000,
-        "max_gap_ms": 4000
+        "max_total_ms": 6000,
+        "max_gap_ms": 2000
       },
       "safety": {
-        "cooldown_ms": 1500,
+        "command_mode": {
+          "required": true
+        },
+        "cooldown_ms": 3000,
         "confirmation": {
           "required": false
         }
@@ -97,16 +236,19 @@
       }
     },
     {
-      "id": "all_off_confirmed",
-      "enabled": true,
+      "id": "all_off_safe",
       "name": "All off with confirmation",
+      "enabled": true,
       "trigger": {
         "kind": "hold",
         "gesture": "BOTH_FISTS",
-        "hold_ms": 2000
+        "hold_ms": 1800
       },
       "safety": {
-        "cooldown_ms": 10000,
+        "command_mode": {
+          "required": true
+        },
+        "cooldown_ms": 5000,
         "confirmation": {
           "required": true,
           "gesture": "TWO_THUMBS_UP",
@@ -115,6 +257,25 @@
       },
       "action": {
         "kind": "virtual_lamp.turn_off"
+      }
+    },
+    {
+      "id": "cancel_workflow",
+      "name": "Cancel workflow",
+      "enabled": true,
+      "trigger": {
+        "kind": "hold",
+        "gesture": "THUMB_DOWN",
+        "hold_ms": 700
+      },
+      "safety": {
+        "cooldown_ms": 1000,
+        "confirmation": {
+          "required": false
+        }
+      },
+      "action": {
+        "kind": "workflow.cancel"
       }
     }
   ]
