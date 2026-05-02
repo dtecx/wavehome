@@ -220,3 +220,50 @@ Example flow
 4. Hold peace sign and rotate it to change color.
 5. Hold both fists, then show two thumbs up, to turn everything off.
 ```
+
+## Block workflow dashboard
+
+The dashboard can now be used as a visual rule editor instead of only editing raw JSON.
+
+Run it with:
+
+```bash
+uvicorn wavehome.web.server:app --reload --host 127.0.0.1 --port 8080
+```
+
+Open:
+
+```text
+http://127.0.0.1:8080/
+```
+
+Useful endpoints:
+
+```text
+GET  /api/health
+GET  /api/capabilities
+GET  /api/gestures
+GET  /api/presets
+GET  /api/rules
+POST /api/rules/validate
+PUT  /api/rules
+POST /api/rules/reset
+```
+
+The rule editor is still backed by JSON, but the page exposes blocks for:
+
+- trigger type: sequence, hold, repeat hold, armed hold, motion, value control;
+- action type: lamp toggle, on/off, brightness, color, party mode, workflow control;
+- safety: cooldown, command mode, confirmation gesture, confirmation timeout.
+
+Recommended safe workflow:
+
+```text
+1. Wake: hold both open palms.
+2. Command mode becomes active.
+3. Execute normal gesture rules.
+4. Confirm dangerous actions with two thumbs up.
+5. Cancel with thumb down.
+```
+
+See `docs/workflow_gesture_design.md` for the gesture vocabulary and false-trigger protection model.
