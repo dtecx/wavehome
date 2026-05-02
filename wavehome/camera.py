@@ -1,6 +1,7 @@
 import threading
 import time
 
+import cv2
 import requests
 
 from .config import CAMERA_URL
@@ -91,3 +92,64 @@ class Esp32CameraStream:
                     pass
 
                 time.sleep(reconnect_delay)
+
+
+class LocalCameraStream:
+    def __init__(self, camera_index=0, width=800, height=600):
+        self.camera_index = camera_index
+        self.width = width
+        self.height = height
+        self.latest_jpg = None
+        self.latest_id = 0
+        self.stop_requested = False
+        self.lock = threading.Lock()
+        self.thread = None
+
+    def start(self):
+        self.thread = threading.Thread(target=self._reader, daemon=True)
+        self.thread.start()
+
+    def stop(self):
+        self.stop_requested = True
+
+    def get_latest(self):
+        with self.lock:
+            return self.latest_jpg, self.latest_id
+
+    def _store_frame(self, jpg):
+        with self.lock:
+            self.latest_jpg = jpg
+            self.latest_id += 1
+
+    def _reader(self):
+        print(f"Opening local camera index {self.camera_index}")
+
+        capture = cv2.VideoCapture(self.camera_index)
+
+        try:
+            if self.width:
+                capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+            if self.height:
+                capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+
+            if not capture.isOpened():
+                print("Local camera could not be opened.")
+                return
+
+            while not self.stop_requested:
+                ok, frame = capture.read()
+
+                if not ok or frame is None:
+                    print("Local camera frame read failed.")
+                    time.sleep(0.1)
+                    continue
+
+                encoded, jpg = cv2.imencode(".jpg", frame)
+
+                if encoded:
+                    self._store_frame(jpg.tobytes())
+
+                time.sleep(0.001)
+
+        finally:
+            capture.release()

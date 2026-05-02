@@ -64,6 +64,15 @@ CAMERA_URL = "http://esp32cam.local/stream"
 
 Update that value if your ESP32-CAM uses a different host or path.
 
+For laptop webcam testing, set:
+
+```python
+USE_LOCAL_CAMERA = True
+LOCAL_CAMERA_INDEX = 0
+```
+
+When `USE_LOCAL_CAMERA` is `True`, the app ignores `CAMERA_URL` and reads frames from the local OpenCV webcam instead.
+
 ## Running
 
 ```bash
@@ -96,7 +105,6 @@ Brightness is clamped between 0% and 100%.
 
 ## Roadmap
 
-- Local laptop webcam mode for development without ESP32-CAM hardware.
 - Cleaner 800x600-friendly UI layout.
 - Real smart home device adapter.
 - Google Home or Home Assistant integration.

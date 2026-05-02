@@ -19,7 +19,7 @@ The target direction is to use the same gesture command layer to control real sm
 
 - `waveHome.py`: entry point.
 - `wavehome/app.py`: main camera, detection, gesture, and display loop.
-- `wavehome/camera.py`: ESP32-CAM stream reader.
+- `wavehome/camera.py`: ESP32-CAM stream reader and local webcam reader.
 - `wavehome/config.py`: constants and tunable settings.
 - `wavehome/controller.py`: virtual lamp state and command sequencing.
 - `wavehome/drawing.py`: OpenCV UI overlays and hand drawing.
@@ -34,7 +34,7 @@ The target direction is to use the same gesture command layer to control real sm
    - `mediapipe`
    - `numpy`
    - `requests`
-2. Make sure `CAMERA_URL` in `wavehome/config.py` points to the ESP32-CAM stream.
+2. Make sure `CAMERA_URL` in `wavehome/config.py` points to the ESP32-CAM stream, or set `USE_LOCAL_CAMERA = True` to use a laptop webcam.
 3. Run:
 
 ```bash
@@ -53,7 +53,6 @@ Press `q` in the OpenCV window to quit.
 
 ## Next Steps
 
-- Add a local laptop webcam mode for testing without ESP32-CAM hardware.
 - Improve the overlay layout for 800x600 ESP32-CAM frames so text does not overlap hands or other UI.
 - Add a real Google Home or Home Assistant integration layer.
 - Add simple config loading from environment variables or a local config file.

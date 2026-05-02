@@ -5,8 +5,16 @@ import mediapipe as mp
 import numpy as np
 from mediapipe.tasks.python import vision
 
-from .camera import Esp32CameraStream
-from .config import APP_NAME, MAX_HANDS, MODEL_PATH
+from .camera import Esp32CameraStream, LocalCameraStream
+from .config import (
+    APP_NAME,
+    LOCAL_CAMERA_HEIGHT,
+    LOCAL_CAMERA_INDEX,
+    LOCAL_CAMERA_WIDTH,
+    MAX_HANDS,
+    MODEL_PATH,
+    USE_LOCAL_CAMERA,
+)
 from .controller import VirtualLampController
 from .drawing import (
     draw_bounding_box,
@@ -175,7 +183,15 @@ def display_loop(camera_stream):
 
 
 def main():
-    camera_stream = Esp32CameraStream()
+    if USE_LOCAL_CAMERA:
+        camera_stream = LocalCameraStream(
+            LOCAL_CAMERA_INDEX,
+            LOCAL_CAMERA_WIDTH,
+            LOCAL_CAMERA_HEIGHT,
+        )
+    else:
+        camera_stream = Esp32CameraStream()
+
     camera_stream.start()
 
     try:

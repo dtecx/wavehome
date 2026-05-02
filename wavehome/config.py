@@ -7,6 +7,12 @@ APP_NAME = "waveHome"
 CAMERA_URL = "http://esp32cam.local/stream"
 # CAMERA_URL = "http://1.1.1.1/stream"
 
+# Set this to True to use the laptop webcam instead of the ESP32-CAM stream.
+USE_LOCAL_CAMERA = False
+LOCAL_CAMERA_INDEX = 0
+LOCAL_CAMERA_WIDTH = 800
+LOCAL_CAMERA_HEIGHT = 600
+
 MAX_HANDS = 2
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
