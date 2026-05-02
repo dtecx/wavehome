@@ -132,3 +132,21 @@ The same sequence toggles party mode on or off. Party mode turns the lamp on, cy
 - Google Home or Home Assistant integration.
 - Config file or environment-variable based setup.
 - Gesture calibration and automated tests.
+
+
+## Dashboard API prototype
+
+Run the dashboard API:
+
+```bash
+uvicorn wavehome.web.server:app --reload --host 127.0.0.1 --port 8080
+```
+
+Endpoints:
+
+GET /api/health
+GET /api/gestures
+GET /api/rules
+
+The dashboard API is intended to edit gesture workflow rules instead of hardcoding gesture behavior in Python.
+
