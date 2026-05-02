@@ -20,6 +20,8 @@ ACTION_KINDS = {
     "virtual_lamp.brightness_step",
     "virtual_lamp.brightness_set",
     "virtual_lamp.color_set",
+    "workflow.enter_command_mode",
+    "workflow.exit_command_mode",
     "workflow.cancel",
 }
 
@@ -99,10 +101,7 @@ def validate_rule(rule: Any, index: int | None = None) -> None:
         for step_index, step in enumerate(steps):
             step = _require_dict(step, f"{prefix}.trigger.steps[{step_index}]")
             _require_string(step.get("gesture"), f"{prefix}.trigger.steps[{step_index}].gesture")
-            _optional_positive_int(
-                step.get("hold_ms", 0),
-                f"{prefix}.trigger.steps[{step_index}].hold_ms",
-            )
+            _optional_positive_int(step.get("hold_ms", 0), f"{prefix}.trigger.steps[{step_index}].hold_ms")
         _optional_positive_int(trigger.get("max_total_ms", 15000), f"{prefix}.trigger.max_total_ms")
         _optional_positive_int(trigger.get("max_gap_ms", 4000), f"{prefix}.trigger.max_gap_ms")
 
@@ -117,6 +116,13 @@ def validate_rule(rule: Any, index: int | None = None) -> None:
         _optional_positive_int(trigger.get("hold_ms", trigger.get("repeat_ms", 0)), f"{prefix}.trigger.hold_ms")
         _optional_positive_int(trigger.get("repeat_ms", 3000), f"{prefix}.trigger.repeat_ms")
 
+    elif kind == "motion":
+        _require_string(trigger.get("gesture"), f"{prefix}.trigger.gesture")
+
+    elif kind == "value_control":
+        _require_string(trigger.get("gesture"), f"{prefix}.trigger.gesture")
+        _optional_positive_int(trigger.get("repeat_ms", 250), f"{prefix}.trigger.repeat_ms")
+
     action = _require_dict(rule.get("action", {}), f"{prefix}.action")
     action_kind = _require_string(action.get("kind"), f"{prefix}.action.kind")
 
@@ -125,8 +131,16 @@ def validate_rule(rule: Any, index: int | None = None) -> None:
             f"{prefix}.action.kind must be one of: {', '.join(sorted(ACTION_KINDS))}"
         )
 
+    if action_kind == "workflow.enter_command_mode":
+        _optional_positive_int(action.get("duration_ms", 10000), f"{prefix}.action.duration_ms")
+
     safety = _require_dict(rule.get("safety", {}), f"{prefix}.safety")
     _optional_positive_int(safety.get("cooldown_ms", 0), f"{prefix}.safety.cooldown_ms")
+
+    command_mode = safety.get("command_mode", {"required": False})
+    command_mode = _require_dict(command_mode, f"{prefix}.safety.command_mode")
+    if not isinstance(command_mode.get("required", False), bool):
+        raise RuleValidationError(f"{prefix}.safety.command_mode.required must be true or false")
 
     confirmation = _require_dict(
         safety.get("confirmation", {"required": False}),
