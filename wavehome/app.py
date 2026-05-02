@@ -6,16 +6,12 @@ import numpy as np
 from mediapipe.tasks.python import vision
 
 from .actions.virtual_lamp import VirtualLampActions
-from .workflow.engine import WorkflowEngine
-from .workflow.loader import enabled_rules, load_rules
-from .workflow.stability import StableGestureFilter
-
-
 from .camera import Esp32CameraStream, LocalCameraStream
 from .config import (
     APP_NAME,
     DISPLAY_HEIGHT,
     DISPLAY_WIDTH,
+    GESTURE_HOLD_SECONDS,
     LOCAL_CAMERA_HEIGHT,
     LOCAL_CAMERA_INDEX,
     LOCAL_CAMERA_WIDTH,
@@ -23,7 +19,6 @@ from .config import (
     MODEL_PATH,
     USE_LOCAL_CAMERA,
     USE_WORKFLOW_ENGINE,
-    GESTURE_HOLD_SECONDS,
 )
 from .controller import VirtualLampController
 from .drawing import (
@@ -33,14 +28,11 @@ from .drawing import (
     draw_text_with_background,
     draw_wavehome_overlay,
 )
-from .gestures import (
-    classify_gesture,
-    command_key_from_hand,
-    command_label,
-    count_fingers,
-    peace_rotation_degrees,
-)
 from .model import ensure_model_exists
+from .recognition import extract_gesture_frame
+from .workflow.engine import WorkflowEngine
+from .workflow.loader import enabled_rules, load_rules
+from .workflow.stability import StableGestureFilter
 
 
 def create_hand_landmarker():
@@ -74,12 +66,10 @@ def display_loop(camera_stream):
         stable_filter = StableGestureFilter(GESTURE_HOLD_SECONDS)
 
     last_seen_id = -1
-
     frames = 0
     dropped = 0
     fps = 0.0
     last_fps_time = time.time()
-
     last_timestamp_ms = 0
     last_wait_frame_time = 0.0
 
@@ -92,6 +82,7 @@ def display_loop(camera_stream):
 
                 if now - last_wait_frame_time >= 0.25:
                     wait_frame = np.zeros((DISPLAY_HEIGHT, DISPLAY_WIDTH, 3), dtype=np.uint8)
+
                     draw_wavehome_overlay(
                         wait_frame,
                         "Waiting for camera frame",
@@ -103,13 +94,13 @@ def display_loop(camera_stream):
                         camera_stream.source_label,
                         camera_stream.status_text,
                     )
+
                     cv2.imshow(f"{APP_NAME} {camera_stream.source_label} Gesture Control", wait_frame)
                     last_wait_frame_time = now
 
-                    key = cv2.waitKey(1) & 0xFF
-
-                    if key == ord("q"):
-                        break
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord("q"):
+                    break
 
                 time.sleep(0.005)
                 continue
@@ -134,104 +125,70 @@ def display_loop(camera_stream):
 
             frame = cv2.resize(frame, (DISPLAY_WIDTH, DISPLAY_HEIGHT))
             frame = cv2.flip(frame, 1)
-
             frame_height, _ = frame.shape[:2]
 
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-            mp_image = mp.Image(
-                image_format=mp.ImageFormat.SRGB,
-                data=rgb_frame,
-            )
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
 
             timestamp_ms = int(time.monotonic() * 1000)
-
             if timestamp_ms <= last_timestamp_ms:
                 timestamp_ms = last_timestamp_ms + 1
-
             last_timestamp_ms = timestamp_ms
 
             result = landmarker.detect_for_video(mp_image, timestamp_ms)
+            gesture_frame = extract_gesture_frame(result)
 
-            detected_hands_text = []
-            controlling_command_key = None
-            controlling_command_label = "none"
-            controlling_command_value = None
+            for hand_index, hand in enumerate(gesture_frame.hands):
+                draw_hand_landmarks(frame, hand.landmarks, hand_index)
+                x1, y1, x2, y2 = draw_bounding_box(frame, hand.landmarks)
 
-            if result.hand_landmarks:
-                for hand_index, landmarks in enumerate(result.hand_landmarks):
-                    finger_count, fingers = count_fingers(landmarks)
-                    gesture = classify_gesture(finger_count, fingers, landmarks)
-                    command_key = command_key_from_hand(finger_count, fingers, landmarks)
+                draw_text_with_background(
+                    frame,
+                    f"H{hand_index + 1}: {hand.handedness_text}",
+                    (x1, max(118, y1 - 10)),
+                    0.55,
+                )
 
-                    if controlling_command_key is None and command_key is not None:
-                        controlling_command_key = command_key
-                        controlling_command_label = command_label(command_key)
-                        if command_key == "PEACE":
-                            controlling_command_value = peace_rotation_degrees(landmarks)
-                    elif controlling_command_label == "none":
-                        controlling_command_label = gesture
+                draw_text_with_background(
+                    frame,
+                    hand.gesture_label,
+                    (x1, min(frame_height - 106, y2 + 25)),
+                    0.55,
+                )
 
-                    handedness_text = f"Hand {hand_index + 1}"
-
-                    if result.handedness and hand_index < len(result.handedness):
-                        handedness = result.handedness[hand_index][0]
-                        handedness_text = f"{handedness.category_name} {handedness.score:.2f}"
-
-                    detected_hands_text.append(
-                        f"H{hand_index + 1}: {gesture} ({finger_count})"
-                    )
-
-                    draw_hand_landmarks(frame, landmarks, hand_index)
-                    x1, y1, x2, y2 = draw_bounding_box(frame, landmarks)
-
-                    draw_text_with_background(
-                        frame,
-                        f"H{hand_index + 1}: {handedness_text}",
-                        (x1, max(118, y1 - 10)),
-                        0.55,
-                    )
-
-                    draw_text_with_background(
-                        frame,
-                        gesture,
-                        (x1, min(frame_height - 106, y2 + 25)),
-                        0.55,
-                    )
-
-                    draw_finger_states_for_hand(frame, fingers, hand_index)
+                draw_finger_states_for_hand(frame, hand.fingers, hand_index)
 
             now = time.time()
 
             if USE_WORKFLOW_ENGINE and workflow_engine is not None and stable_filter is not None:
-                stable_key = stable_filter.update(controlling_command_key, now)
-                workflow_engine.update(stable_key, now, controlling_command_value)
+                stable_key = stable_filter.update(gesture_frame.command_key, now)
+                workflow_engine.update(stable_key, now, gesture_frame.command_value)
+
                 if workflow_engine.message:
                     lamp_controller.message = workflow_engine.message
                     lamp_controller.message_until = now + 2.0
+
                 lamp_controller._update_party_frame(now)
             else:
-                lamp_controller.update(controlling_command_key, now, controlling_command_value)
+                lamp_controller.update(
+                    gesture_frame.command_key,
+                    now,
+                    gesture_frame.command_value,
+                )
 
             frames += 1
-
             if now - last_fps_time >= 1.0:
                 fps = frames / (now - last_fps_time)
                 frames = 0
                 last_fps_time = now
 
-            if detected_hands_text:
-                hands_status = " | ".join(detected_hands_text)
-            else:
-                hands_status = "No hand detected"
-
             draw_wavehome_overlay(
                 frame,
-                hands_status,
+                gesture_frame.hands_status,
                 fps,
                 dropped,
                 lamp_controller,
-                controlling_command_label,
+                gesture_frame.command_label,
                 now,
                 camera_stream.source_label,
                 camera_stream.status_text,
@@ -240,7 +197,6 @@ def display_loop(camera_stream):
             cv2.imshow(f"{APP_NAME} {camera_stream.source_label} Gesture Control", frame)
 
             key = cv2.waitKey(1) & 0xFF
-
             if key == ord("q"):
                 break
 
