@@ -11,6 +11,8 @@ The project is aimed at making smart home control more accessible for deaf, hard
 - Hand bones, bounding boxes, gesture labels, and finger-state overlays.
 - 800x600-friendly OpenCV UI with compact status panels.
 - Virtual lamp state shown on screen.
+- Scratch-like scenario dashboard for editing gesture workflows as blocks.
+- Future-ready smart-home action layer with a Google Home bridge adapter.
 - Gesture command support:
   - Toggle lamp: `5 fingers up -> fist -> 5 fingers up -> fist`
   - Increase brightness: `fist -> thumb up`, then hold
@@ -44,11 +46,14 @@ The project is aimed at making smart home control more accessible for deaf, hard
   - `mediapipe`
   - `numpy`
   - `requests`
+  - `fastapi`
+  - `uvicorn`
+  - `pydantic`
 
 Install dependencies with your preferred Python environment, for example:
 
 ```bash
-python3 -m pip install opencv-python mediapipe numpy requests
+python3 -m pip install opencv-python mediapipe numpy requests fastapi uvicorn pydantic
 ```
 
 ## Configuration
@@ -137,7 +142,7 @@ The same sequence toggles party mode on or off. Party mode turns the lamp on, cy
 
 ## Rule-based workflow mode
 
-The `feature/rule-based-gestures` branch supports an experimental rule-based workflow engine.
+waveHome includes a rule-based workflow engine.
 
 Instead of hardcoding every gesture directly in Python, gestures are converted into workflow events. Rules from `wavehome/rules/default_rules.json` decide what action should happen.
 
@@ -166,7 +171,7 @@ thumb down -> cancel
 ```
 
 
-Dashboard
+### Dashboard
 
 Run the dashboard API and editor:
 
@@ -250,10 +255,11 @@ PUT  /api/rules
 POST /api/rules/reset
 ```
 
-The rule editor is still backed by JSON, but the page exposes blocks for:
+The rule editor is backed by JSON, but the dashboard exposes blocks for:
 
 - trigger type: sequence, hold, repeat hold, armed hold, motion, value control;
 - action type: lamp toggle, on/off, brightness, color, party mode, workflow control;
+- future smart-home actions: power, brightness, color, scene activation;
 - safety: cooldown, command mode, confirmation gesture, confirmation timeout.
 
 Recommended safe workflow:
@@ -267,3 +273,24 @@ Recommended safe workflow:
 ```
 
 See `docs/workflow_gesture_design.md` for the gesture vocabulary and false-trigger protection model.
+
+## Future Google Home Bridge
+
+The Python app now has a provider boundary for smart-home actions:
+
+```text
+smart_home.set_power
+smart_home.set_brightness
+smart_home.set_color
+smart_home.activate_scene
+```
+
+By default these actions are inert unless a bridge is configured. Set these environment variables when a Google Home bridge service is ready:
+
+```bash
+export WAVEHOME_GOOGLE_HOME_ENABLED=true
+export WAVEHOME_GOOGLE_HOME_BRIDGE_URL=http://127.0.0.1:9000
+export WAVEHOME_GOOGLE_HOME_ACCESS_TOKEN=replace-with-token
+```
+
+The adapter posts normalized commands to `/commands`; that bridge can later own OAuth, permissions, and platform-specific Google Home API calls.
