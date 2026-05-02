@@ -215,7 +215,15 @@ def command_key_from_hand(finger_count, fingers, landmarks):
 
     if is_horns_gesture(fingers):
         return "HORNS"
+    
+    if fingers["index"] and not fingers["middle"] and not fingers["ring"] and not fingers["pinky"]:
+        return "POINT"
 
+    if fingers["thumb"] and fingers["index"] and fingers["middle"] and not fingers["ring"] and not fingers["pinky"]:
+        return "THREE"
+
+    if not fingers["thumb"] and fingers["index"] and fingers["middle"] and fingers["ring"] and fingers["pinky"]:
+        return "FOUR"
     return None
 
 
