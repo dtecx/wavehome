@@ -5,6 +5,12 @@ import mediapipe as mp
 import numpy as np
 from mediapipe.tasks.python import vision
 
+from .actions.virtual_lamp import VirtualLampActions
+from .workflow.engine import WorkflowEngine
+from .workflow.loader import enabled_rules, load_rules
+from .workflow.stability import StableGestureFilter
+
+
 from .camera import Esp32CameraStream, LocalCameraStream
 from .config import (
     APP_NAME,
@@ -16,6 +22,8 @@ from .config import (
     MAX_HANDS,
     MODEL_PATH,
     USE_LOCAL_CAMERA,
+    USE_WORKFLOW_ENGINE,
+    GESTURE_HOLD_SECONDS,
 )
 from .controller import VirtualLampController
 from .drawing import (
@@ -55,6 +63,15 @@ def display_loop(camera_stream):
 
     landmarker = create_hand_landmarker()
     lamp_controller = VirtualLampController()
+
+    workflow_engine = None
+    stable_filter = None
+
+    if USE_WORKFLOW_ENGINE:
+        rules_config = load_rules()
+        action_adapter = VirtualLampActions(lamp_controller)
+        workflow_engine = WorkflowEngine(enabled_rules(rules_config), action_adapter)
+        stable_filter = StableGestureFilter(GESTURE_HOLD_SECONDS)
 
     last_seen_id = -1
 
@@ -185,7 +202,16 @@ def display_loop(camera_stream):
                     draw_finger_states_for_hand(frame, fingers, hand_index)
 
             now = time.time()
-            lamp_controller.update(controlling_command_key, now, controlling_command_value)
+
+            if USE_WORKFLOW_ENGINE and workflow_engine is not None and stable_filter is not None:
+                stable_key = stable_filter.update(controlling_command_key, now)
+                workflow_engine.update(stable_key, now, controlling_command_value)
+                if workflow_engine.message:
+                    lamp_controller.message = workflow_engine.message
+                    lamp_controller.message_until = now + 2.0
+                lamp_controller._update_party_frame(now)
+            else:
+                lamp_controller.update(controlling_command_key, now, controlling_command_value)
 
             frames += 1
 
