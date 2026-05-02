@@ -15,7 +15,6 @@ class WorkflowEngine:
         self.cooldowns: dict[str, float] = {}
         self.pending_confirmation: dict[str, Any] | None = None
         self.command_mode_until = 0.0
-
         self.message = "Workflow engine ready"
 
     def update(
@@ -25,7 +24,6 @@ class WorkflowEngine:
         value: float | None = None,
     ) -> str | None:
         confirmation_result = self._update_confirmation(stable_gesture, now)
-
         if confirmation_result is not None:
             return confirmation_result
 
@@ -34,6 +32,9 @@ class WorkflowEngine:
             return None
 
         for rule in self.rules:
+            if not rule.get("enabled", True):
+                continue
+
             trigger = rule.get("trigger", {})
             kind = trigger.get("kind")
 
@@ -41,6 +42,8 @@ class WorkflowEngine:
                 action_result = self._update_sequence_rule(rule, stable_gesture, now)
             elif kind == "hold":
                 action_result = self._update_hold_rule(rule, stable_gesture, now)
+            elif kind == "repeat_hold":
+                action_result = self._update_repeat_hold_rule(rule, stable_gesture, now)
             elif kind == "armed_hold":
                 action_result = self._update_armed_hold_rule(rule, stable_gesture, now)
             elif kind == "motion":
@@ -80,12 +83,10 @@ class WorkflowEngine:
 
             action = rule.get("action", {})
             result = self._execute_action(action, now)
-
             if result is None:
                 result = self.action_adapter.execute(action)
 
             self._set_cooldown(rule, now)
-
             self.message = f"Confirmed: {rule.get('name', rule['id'])}"
             return result
 
@@ -96,7 +97,6 @@ class WorkflowEngine:
 
         self.message = f"Waiting for confirmation: {pending['gesture']}"
         return None
-
 
     def _command_mode_active(self, now: float) -> bool:
         return now < self.command_mode_until
@@ -133,7 +133,6 @@ class WorkflowEngine:
 
     def _set_cooldown(self, rule: dict[str, Any], now: float) -> None:
         cooldown_ms = rule.get("safety", {}).get("cooldown_ms", 0)
-
         if cooldown_ms > 0:
             self.cooldowns[rule["id"]] = now + cooldown_ms / 1000.0
 
@@ -151,20 +150,17 @@ class WorkflowEngine:
             return None
 
         confirmation = rule.get("safety", {}).get("confirmation", {})
-
         if confirmation.get("required"):
             self.pending_confirmation = {
                 "rule": rule,
                 "gesture": confirmation.get("gesture", "THUMB_UP"),
                 "expires_at": now + confirmation.get("timeout_ms", 3000) / 1000.0,
             }
-
             self.message = f"Confirm: {rule.get('name', rule['id'])}"
             return "pending_confirmation"
 
         action = action_override or rule.get("action", {})
         result = self._execute_action(action, now)
-
         if result is None:
             result = self.action_adapter.execute(action)
 
@@ -199,7 +195,6 @@ class WorkflowEngine:
 
         trigger = rule["trigger"]
         steps = trigger.get("steps", [])
-
         if not steps:
             return None
 
@@ -232,12 +227,10 @@ class WorkflowEngine:
 
         if state["step_started_at"] is None:
             state["step_started_at"] = now
-
             if state["index"] == 0:
                 state["started_at"] = now
 
         hold_seconds = expected_step.get("hold_ms", 0) / 1000.0
-
         if now - state["step_started_at"] < hold_seconds:
             remaining = hold_seconds - (now - state["step_started_at"])
             self.message = (
@@ -303,6 +296,52 @@ class WorkflowEngine:
         state["fired"] = True
         return self._execute_rule(rule, now)
 
+    def _update_repeat_hold_rule(
+        self,
+        rule: dict[str, Any],
+        stable_gesture: str,
+        now: float,
+    ) -> str | None:
+        trigger = rule["trigger"]
+        target_gesture = trigger.get("gesture")
+        hold_seconds = trigger.get("hold_ms", 0) / 1000.0
+        repeat_seconds = trigger.get("repeat_ms", 1000) / 1000.0
+
+        state = self.hold_state.setdefault(
+            f"repeat:{rule['id']}",
+            {
+                "gesture": None,
+                "started_at": None,
+                "next_action_at": None,
+            },
+        )
+
+        if stable_gesture != target_gesture:
+            state["gesture"] = None
+            state["started_at"] = None
+            state["next_action_at"] = None
+            return None
+
+        if state["gesture"] != stable_gesture:
+            state["gesture"] = stable_gesture
+            state["started_at"] = now
+            state["next_action_at"] = now + hold_seconds
+            self.message = f"{rule.get('name', rule['id'])}: hold {target_gesture}"
+            return "repeat_hold_started"
+
+        if state["next_action_at"] is None:
+            state["next_action_at"] = now + hold_seconds
+            return None
+
+        if now < state["next_action_at"]:
+            remaining = state["next_action_at"] - now
+            self.message = f"{rule.get('name', rule['id'])}: action in {remaining:.1f}s"
+            return None
+
+        result = self._execute_rule(rule, now)
+        state["next_action_at"] = now + repeat_seconds
+        return result
+
     def _update_armed_hold_rule(
         self,
         rule: dict[str, Any],
@@ -310,7 +349,6 @@ class WorkflowEngine:
         now: float,
     ) -> str | None:
         trigger = rule["trigger"]
-
         arm_gesture = trigger.get("arm_gesture")
         target_gesture = trigger.get("gesture")
         arm_timeout_seconds = trigger.get("arm_timeout_ms", 8000) / 1000.0
@@ -356,16 +394,12 @@ class WorkflowEngine:
 
         if now < state["next_action_at"]:
             remaining = state["next_action_at"] - now
-            self.message = (
-                f"{rule.get('name', rule['id'])}: action in {remaining:.1f}s"
-            )
+            self.message = f"{rule.get('name', rule['id'])}: action in {remaining:.1f}s"
             return None
 
         result = self._execute_rule(rule, now)
         state["next_action_at"] = now + repeat_seconds
-
         return result
-
 
     def _update_motion_rule(
         self,
@@ -374,7 +408,6 @@ class WorkflowEngine:
         now: float,
     ) -> str | None:
         trigger = rule["trigger"]
-
         if stable_gesture != trigger.get("gesture"):
             return None
 
@@ -388,7 +421,6 @@ class WorkflowEngine:
         value: float | None,
     ) -> str | None:
         trigger = rule["trigger"]
-
         if stable_gesture != trigger.get("gesture"):
             return None
 
@@ -423,6 +455,8 @@ class WorkflowEngine:
             state["gesture"] = None
             state["started_at"] = None
             state["fired"] = False
+            if "next_action_at" in state:
+                state["next_action_at"] = None
 
         for state in self.armed_hold_state.values():
             state["active_gesture"] = None

@@ -109,6 +109,11 @@ def validate_rule(rule: Any, index: int | None = None) -> None:
         _require_string(trigger.get("gesture"), f"{prefix}.trigger.gesture")
         _optional_positive_int(trigger.get("hold_ms", 0), f"{prefix}.trigger.hold_ms")
 
+    elif kind == "repeat_hold":
+        _require_string(trigger.get("gesture"), f"{prefix}.trigger.gesture")
+        _optional_positive_int(trigger.get("hold_ms", 0), f"{prefix}.trigger.hold_ms")
+        _optional_positive_int(trigger.get("repeat_ms", 1000), f"{prefix}.trigger.repeat_ms")
+
     elif kind == "armed_hold":
         _require_string(trigger.get("arm_gesture"), f"{prefix}.trigger.arm_gesture")
         _require_string(trigger.get("gesture"), f"{prefix}.trigger.gesture")
