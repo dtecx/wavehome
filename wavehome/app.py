@@ -32,6 +32,7 @@ from .drawing import (
 )
 from .events import GestureEvent
 from .model import ensure_model_exists
+from .lamp_window import draw_lamp_window
 from .motion import MotionDetector
 from .providers.google_home import GoogleHomeAdapter
 from .recognition import extract_gesture_frame
@@ -107,8 +108,6 @@ def display_loop(camera_stream):
                         camera_stream.status_text,
                     )
 
-                    cv2.imshow(f"{APP_NAME} {camera_stream.source_label} Gesture Control", wait_frame)
-                    last_wait_frame_time = now
 
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord("q"):

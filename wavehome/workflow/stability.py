@@ -5,11 +5,13 @@ from wavehome.gesture_catalog import gesture_kind, gesture_label
 
 
 class StableGestureFilter:
-    def __init__(self, hold_seconds: float):
+    def __init__(self, hold_seconds: float, grace_seconds: float = 0.15):
         self.hold_seconds = hold_seconds
+        self.grace_seconds = grace_seconds
         self.candidate = None
         self.candidate_since = 0.0
         self.last_accepted = None
+        self.last_accepted_time = 0.0
 
     def update(self, gesture: str | None, now: float) -> str | None:
         if gesture is None:
@@ -19,6 +21,15 @@ class StableGestureFilter:
             return None
 
         if gesture != self.candidate:
+            # Grace period: if we had an accepted gesture and the new one
+            # appears only briefly, keep the old one
+            if (
+                self.last_accepted is not None
+                and now - self.last_accepted_time < self.grace_seconds
+            ):
+                # Ignore the blip, keep last accepted
+                return self.last_accepted
+
             self.candidate = gesture
             self.candidate_since = now
             return None
@@ -26,6 +37,8 @@ class StableGestureFilter:
         if now - self.candidate_since < self.hold_seconds:
             return None
 
+        self.last_accepted = gesture
+        self.last_accepted_time = now
         return gesture
 
     def update_event(
